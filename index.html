@@ -1,0 +1,3727 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>笼中小鸟</title>
+<style>
+  /* ===================== 全局配色（可改） ===================== */
+  :root{
+    --charcoal:#6e7279;   /* 主色：柔和浅炭灰（鸟笼/标题/控件） */
+    --yellow:#f3dc8e;     /* 辅色：低饱和鹅黄（小鸟/点缀） */
+    --bg:#faf7f1;         /* 背景：极浅米白 */
+    --ink:#565a61;        /* 文字：浅灰黑 */
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    font-family:"Nunito","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    color:var(--ink);
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    overflow-x:hidden;
+    -webkit-tap-highlight-color:transparent;
+    /* 极淡的暖色径向背景，干净通透 */
+    background:radial-gradient(120% 90% at 50% 0%, #fdfbf6 0%, var(--bg) 55%, #f3eee4 100%);
+  }
+  /* ===================== 顶部标题 ===================== */
+  header{
+    padding:clamp(26px,5vh,40px) 20px 6px;
+    text-align:center;
+    animation:fadeIn 1.4s ease both;
+  }
+  h1{
+    font-size:clamp(23px,4.2vw,31px);
+    font-weight:300;
+    letter-spacing:.38em;
+    padding-left:.38em; /* 让居中的字视觉平衡 */
+    color:var(--charcoal);
+  }
+  .sub{
+    margin-top:10px;
+    font-size:clamp(12px,2.4vw,13px);
+    font-weight:300;
+    color:#9fa2a8;
+    letter-spacing:.22em;
+    padding-left:.22em;
+  }
+  /* ===================== 中部画布 ===================== */
+  .stage{
+    flex:1;
+    width:min(95vw,720px);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  canvas{
+    display:block;
+    width:100%;
+    height:clamp(430px,68vh,640px);
+    touch-action:none;   /* 手机端触控不滚动页面 */
+    cursor:none;         /* 小手代替鼠标指针 */
+  }
+  /* 彩蛋结束后浮现的温柔提示 */
+  .message{
+    min-height:30px;
+    margin-top:2px;
+    text-align:center;
+    font-size:clamp(12px,2.6vw,14px);
+    font-weight:300;
+    color:#8d9096;
+    letter-spacing:.14em;
+    opacity:0;
+    transform:translateY(6px);
+    transition:opacity 1.8s ease, transform 1.8s ease;
+    pointer-events:none;
+  }
+  .message.show{opacity:1;transform:translateY(0);}
+  /* ===================== 底部免责 ===================== */
+  footer{
+    padding:14px 16px clamp(18px,4vh,30px);
+    font-size:11px;
+    font-weight:300;
+    color:#b8babc;
+    letter-spacing:.08em;
+    text-align:center;
+  }
+  /* ===================== 开场新手指引 ===================== */
+  .guide{
+    position:fixed; inset:0; z-index:10;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    background:rgba(250,247,241,.72);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    transition:opacity .8s ease, visibility .8s;
+  }
+  .guide.hide{opacity:0; visibility:hidden; pointer-events:none;}
+  .guide-card{
+    width:min(420px,92vw);
+    background:#fffdf8;
+    border:1px solid #efe8da;
+    border-radius:26px;
+    padding:34px 30px 30px;
+    text-align:center;
+    box-shadow:0 18px 50px rgba(120,110,90,.14);
+    animation:cardIn .9s cubic-bezier(.22,1,.36,1) both;
+  }
+  .guide-icon{margin:0 auto 12px;display:block;}
+  .guide-card h2{
+    font-size:19px;font-weight:400;letter-spacing:.3em;padding-left:.3em;
+    color:var(--charcoal);margin-bottom:16px;
+  }
+  .guide-card ul{list-style:none;text-align:left;margin:0 auto 26px;max-width:330px;}
+  .guide-card li{
+    position:relative;padding-left:22px;margin:12px 0;
+    font-size:13.5px;line-height:1.85;font-weight:300;
+    color:#7c7f86;letter-spacing:.04em;
+  }
+  .guide-card li::before{
+    content:"";position:absolute;left:4px;top:11px;
+    width:6px;height:6px;border-radius:50%;background:var(--yellow);
+  }
+  .start-btn{
+    appearance:none;border:1px solid #d8d0c0;cursor:pointer;
+    background:linear-gradient(#fffaf0,#f6eeda);
+    color:var(--charcoal);
+    font-family:inherit;font-size:15px;font-weight:400;
+    letter-spacing:.34em;padding:13px 34px 13px;border-radius:999px;
+    box-shadow:0 6px 16px rgba(150,135,100,.12);
+    transition:transform .25s ease,box-shadow .25s ease;
+  }
+  .start-btn:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(150,135,100,.18);}
+  .start-btn:active{transform:translateY(0);}
+  .start-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+  @keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.98);}to{opacity:1;transform:none;}}
+
+  /* ===================== 角色 / 皮肤选择页 ===================== */
+  .sheet{
+    position:fixed; inset:0; z-index:10;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+    background:rgba(250,247,241,.78);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    transition:opacity .55s ease, visibility .55s;
+  }
+  .sheet.hide{opacity:0; visibility:hidden; pointer-events:none;}
+  .sheet-card{
+    width:min(540px,95vw);
+    max-height:92vh; overflow-y:auto;
+    background:#fffdf8;
+    border:1px solid #efe8da;
+    border-radius:26px;
+    padding:26px 24px 24px;
+    text-align:center;
+    box-shadow:0 18px 50px rgba(120,110,90,.14);
+    animation:cardIn .6s cubic-bezier(.22,1,.36,1) both;
+  }
+  .sheet-card h2{
+    font-size:19px;font-weight:400;letter-spacing:.28em;padding-left:.28em;
+    color:var(--charcoal);margin-bottom:6px;
+  }
+  .sheet-card .tip{
+    font-size:12px;font-weight:300;color:#a4a7ad;letter-spacing:.1em;
+    margin-bottom:18px;
+  }
+  .pick-grid{
+    display:grid;gap:12px;margin-bottom:22px;
+  }
+  .pick-grid.chars{grid-template-columns:repeat(4,1fr);}
+  .pick-grid.skins{grid-template-columns:repeat(3,1fr);}
+  .pick-item{
+    position:relative; cursor:pointer; user-select:none;
+    border:1.5px solid #ece4d5;border-radius:18px;
+    background:linear-gradient(#fffefb,#fbf6ec);
+    padding:10px 6px 9px;
+    transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
+  }
+  .pick-item:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(150,135,100,.13);}
+  .pick-item.sel{
+    border-color:var(--yellow);
+    box-shadow:0 0 0 3px rgba(243,220,142,.38),0 8px 18px rgba(150,135,100,.13);
+  }
+  .pick-item canvas{width:100%;height:92px;cursor:pointer;touch-action:auto;}
+  .pick-grid.skins .pick-item canvas{height:86px;}
+  .pick-name{
+    margin-top:4px;font-size:13px;font-weight:400;color:#686c73;letter-spacing:.06em;
+  }
+  .pick-tag{
+    margin-top:2px;font-size:10px;font-weight:300;color:#b0aaa0;letter-spacing:.05em;
+  }
+  .pick-item.sel .pick-name{color:#8a7432;}
+  .sel-dot{
+    position:absolute;top:7px;right:7px;width:16px;height:16px;
+    border-radius:50%;background:var(--yellow);
+    opacity:0;transform:scale(.4);transition:all .2s ease;
+  }
+  .pick-item.sel .sel-dot{opacity:1;transform:scale(1);}
+  .sel-dot::after{
+    content:"";position:absolute;left:5px;top:3px;width:4px;height:7px;
+    border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);
+  }
+  .pick-actions{display:flex;gap:12px;justify-content:center;}
+  .btn-ghost{
+    appearance:none;border:1.5px solid #e0d9ca;background:transparent;cursor:pointer;
+    color:#9a9da3;font-family:inherit;font-size:14px;font-weight:400;
+    letter-spacing:.24em;padding:12px 26px;border-radius:999px;
+    transition:background .2s ease;
+  }
+  .btn-ghost:hover{background:#f5f0e6;}
+
+  /* ===================== 右上角静音小按钮 ===================== */
+  .mute-btn{
+    position:fixed;top:14px;right:14px;z-index:20;
+    width:40px;height:40px;border-radius:50%;
+    border:1px solid #e6dfd1;background:rgba(255,253,248,.85);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    color:#8d8f95;
+    box-shadow:0 4px 12px rgba(140,125,95,.1);
+    transition:transform .2s ease,color .2s ease;
+  }
+  .mute-btn:hover{transform:scale(1.08);color:#6e7279;}
+  @media (max-width:420px){
+    .pick-grid.chars{grid-template-columns:repeat(2,1fr);}
+    .pick-grid.skins{grid-template-columns:repeat(2,1fr);}
+    .pick-item canvas{height:100px;}
+  }
+
+  /* ============================================================
+   * 4合1 合集：页面切换 / 首页菜单 / 公共按钮
+   * （小鸟原页面整体包进 .game-page，内部样式零改动）
+   * ============================================================ */
+  .game-page{                 /* 每个小游戏的整页容器 */
+    position:fixed;inset:0;display:flex;
+    flex-direction:column;align-items:center;
+    overflow-x:hidden;overflow-y:auto;
+    background:var(--bg);z-index:1;
+    /* 用 visibility 而非 display 隐藏：保留布局尺寸，
+       小鸟画布在首页时也有正常大小，避免离屏层 drawImage 报错 */
+    visibility:hidden;pointer-events:none;
+  }
+  .game-page.on{visibility:visible;pointer-events:auto;}
+
+  /* ---------- 首页游戏选择菜单 ---------- */
+  #menu{
+    position:fixed;inset:0;z-index:2;display:none;
+    flex-direction:column;align-items:center;justify-content:center;
+    gap:24px;padding:34px 16px;background:var(--bg);overflow-y:auto;
+  }
+  #menu.on{display:flex;}
+  .menu-title{
+    font-size:clamp(24px,4.6vw,32px);font-weight:300;
+    letter-spacing:.4em;text-indent:.4em;color:var(--charcoal);
+    animation:fadeIn 1.2s ease both;
+  }
+  .menu-sub{
+    margin-top:-14px;font-size:12px;font-weight:300;
+    color:#b0b2b4;letter-spacing:.22em;text-indent:.22em;
+    animation:fadeIn 1.6s ease both;
+  }
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;width:min(600px,94vw);animation:fadeIn 1.8s ease both;}
+  .card{
+    background:#fffdf8;border:1px solid #eee5d6;border-radius:24px;
+    padding:18px 14px 15px;cursor:pointer;font-family:inherit;color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;gap:7px;
+    box-shadow:0 10px 24px rgba(150,135,100,.08);
+    transition:transform .25s ease,box-shadow .25s ease;
+  }
+  .card:hover{transform:translateY(-5px);box-shadow:0 16px 30px rgba(150,135,100,.15);}
+  .card canvas{width:86px;height:86px;cursor:pointer;}
+  .card b{font-weight:600;font-size:15px;letter-spacing:.18em;text-indent:.18em;}
+  .card span{font-size:11px;font-weight:300;color:#a8aaa9;letter-spacing:.08em;}
+  .menu-foot{font-size:11px;font-weight:300;color:#b8babc;letter-spacing:.1em;text-align:center;animation:fadeIn 2.2s ease both;}
+
+  /* ---------- 每个游戏页左上角【返回首页】 ---------- */
+  .back-btn{
+    position:fixed;top:14px;left:14px;z-index:30;
+    display:flex;align-items:center;gap:6px;
+    padding:9px 16px 9px 11px;border-radius:999px;
+    border:1px solid #e6dfd1;background:rgba(255,253,248,.88);
+    color:#8d8f95;font-size:12px;font-family:inherit;letter-spacing:.14em;
+    cursor:pointer;box-shadow:0 4px 12px rgba(140,125,95,.1);
+    transition:transform .2s ease,color .2s ease;
+  }
+  .back-btn:hover{transform:scale(1.06);color:#6e7279;}
+
+  /* ---------- 新游戏画布（覆盖小鸟 canvas 全局规则） ---------- */
+  #cvStar,#cvPig,#cvFish{
+    position:absolute;inset:0;width:100%;height:100%;
+    touch-action:none;cursor:default;border-radius:0;
+  }
+
+  /* ---------- 海星：底部倍速滑块胶囊 ---------- */
+  .ctrl-pill{
+    position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:25;
+    display:flex;align-items:center;gap:10px;padding:10px 18px;
+    border-radius:999px;background:rgba(255,253,248,.9);
+    border:1px solid #e6dfd1;box-shadow:0 6px 16px rgba(140,125,95,.12);
+    font-size:12px;color:#8d8f95;letter-spacing:.1em;
+  }
+  .ctrl-pill input[type=range]{width:150px;accent-color:#e8b8a8;cursor:pointer;}
+
+  /* ---------- 海星：右上角「清空水盆」按钮（静音键左边） ---------- */
+  .clear-btn{
+    position:fixed;top:14px;right:64px;z-index:30;
+    padding:9px 18px;border-radius:999px;
+    border:1px solid #e6dfd1;background:rgba(255,253,248,.88);
+    color:#8d8f95;font-size:13px;letter-spacing:.12em;font-family:inherit;
+    cursor:pointer;box-shadow:0 4px 12px rgba(140,125,95,.1);
+    transition:transform .18s ease,color .18s ease,background .18s ease;
+  }
+  .clear-btn:hover{transform:scale(1.06);color:#6e7279;background:#fdf6ec;}
+
+  /* ---------- 小猪：底部衣服托盘 ---------- */
+  .clothes-tray{
+    position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:25;
+    display:flex;gap:10px;padding:8px 12px;border-radius:22px;
+    background:rgba(255,253,248,.9);border:1px solid #e6dfd1;
+    box-shadow:0 6px 16px rgba(140,125,95,.12);
+  }
+  .clothes-tray button{
+    width:58px;height:58px;border-radius:16px;border:1px solid #eee5d6;
+    background:#fffdf8;cursor:pointer;padding:0;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .18s ease,box-shadow .18s ease;
+  }
+  .clothes-tray button canvas{    /* 覆盖小鸟游戏的全局 canvas 尺寸规则 */
+    width:44px;height:44px;display:block;
+  }
+  .clothes-tray button:hover{transform:translateY(-3px);}
+  .clothes-tray button.sel{border-color:#f0c1ae;box-shadow:inset 0 0 0 2px #f7d8ca;}
+  .tray-hint{
+    position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:24;
+    font-size:12px;font-weight:300;color:#a9abab;letter-spacing:.12em;
+    background:rgba(255,253,248,.88);border:1px solid #eee5d6;
+    border-radius:999px;padding:6px 15px;pointer-events:none;
+    transition:opacity .45s ease;
+  }
+  /* ---------- 玩法指引小胶囊（海星/金鱼，顶部常驻不挡交互） ---------- */
+  .guide-tip{
+    position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:24;
+    padding:8px 18px;border-radius:999px;border:1px solid #eee5d6;
+    background:rgba(255,253,248,.82);color:#a9a29a;font-size:12.5px;letter-spacing:.08em;
+    pointer-events:none;white-space:nowrap;max-width:88vw;
+    box-shadow:0 4px 10px rgba(140,125,95,.08);
+  }
+  /* ---------- 小猪：抱起来开关（右下角） ---------- */
+  .carry-toggle{
+    position:fixed;right:22px;bottom:26px;z-index:27;
+    padding:7px 18px;border-radius:999px;border:1px solid #e6dfd1;
+    background:rgba(255,253,248,.92);color:#a9a29a;font-size:12px;letter-spacing:.12em;
+    font-family:inherit;cursor:pointer;transition:all .22s ease;
+    box-shadow:0 4px 10px rgba(140,125,95,.1);
+  }
+  .carry-toggle.on{ background:#fdeae2;color:#b97a66;border-color:#f0d3c8; }
+  .carry-toggle:hover{ transform:translateY(-1px); }
+
+  /* ---------- 小猪：左下角「投喂」按键 ---------- */
+  .feed-btn{
+    position:fixed;left:22px;bottom:26px;z-index:26;
+    padding:12px 24px;border-radius:999px;border:1px solid #eee5d6;
+    background:rgba(255,253,248,.92);color:#a9a29a;font-size:14px;letter-spacing:.15em;
+    font-family:inherit;cursor:pointer;
+    box-shadow:0 6px 16px rgba(140,125,95,.14);
+    transition:all .22s ease;
+  }
+  .feed-btn.on{ background:#f6ecd4;color:#b9965c;border-color:#ecd9ae; }
+  .feed-btn:hover{ transform:translateY(-1px); }
+
+  /* ---------- 小猪：抱起后出现的「放下它」按钮（叠在抱起来开关上方） ---------- */
+  .drop-btn{
+    position:fixed;right:22px;bottom:84px;z-index:26;
+    padding:12px 24px;border-radius:999px;border:1px solid #f0d3c8;
+    background:#fdeae2;color:#b97a66;font-size:14px;letter-spacing:.15em;
+    font-family:inherit;cursor:pointer;
+    box-shadow:0 6px 16px rgba(190,140,120,.2);
+    opacity:0;pointer-events:none;transform:translateY(8px);
+    transition:opacity .25s ease,transform .25s ease;
+  }
+  .drop-btn.on{opacity:1;pointer-events:auto;transform:translateY(0);}
+  .drop-btn:hover{background:#fbe0d4;}
+
+  @media (max-width:560px){
+    .cards{grid-template-columns:1fr;width:min(330px,92vw);}
+    .card{flex-direction:row;justify-content:flex-start;gap:14px;padding:11px 16px;}
+    .card canvas{width:58px;height:58px;}
+    .ctrl-pill input[type=range]{width:110px;}
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===================== 首页：游戏选择菜单 ===================== -->
+  <div id="menu" class="on">
+    <div class="menu-title">动物解压小屋</div>
+    <div class="cards">
+      <button class="card" data-game="bird" type="button">
+        <canvas id="icBird" width="172" height="172"></canvas>
+        <b>笼中小鸟</b><span>轻轻靠近胆小的它</span>
+      </button>
+      <button class="card" data-game="star" type="button">
+        <canvas id="icStar" width="172" height="172"></canvas>
+        <b>海星翻翻身</b><span>把倒扣的海星送回水里</span>
+      </button>
+      <button class="card" data-game="pig" type="button">
+        <canvas id="icPig" width="172" height="172"></canvas>
+        <b>乱跑小猪乐园</b><span>抱起软乎乎的盲盒小猪</span>
+      </button>
+      <button class="card" data-game="fish" type="button">
+        <canvas id="icFish" width="172" height="172"></canvas>
+        <b>大眼金鱼看电视</b><span>给金鱼们放一会儿电视</span>
+      </button>
+    </div>
+    <p class="menu-foot">全部交互运行于本地浏览器，数据不会上传云端。</p>
+  </div>
+
+  <!-- ===================== 游戏1：笼中小鸟（原游戏完整保留） ===================== -->
+  <section id="game-bird" class="game-page">
+  <button class="back-btn" data-back type="button">&larr; 返回首页</button>
+  <header>
+    <p class="sub">试着轻轻靠近它吧</p>
+  </header>
+
+  <main class="stage">
+    <canvas id="game"></canvas>
+    <p class="message" id="message">它奔赴属于自己的自由了，请刷新页面，才能再次与小鸟相遇。</p>
+  </main>
+
+  <footer>全部交互运行于本地浏览器，数据不会上传云端。</footer>
+
+  <!-- ===================== 开场新手指引 ===================== -->
+  <div class="guide" id="guide">
+    <div class="guide-card">
+      <svg class="guide-icon" width="66" height="66" viewBox="0 0 66 66" fill="none" aria-hidden="true">
+        <circle cx="33" cy="33" r="30" fill="#fbf3dd"/>
+        <ellipse  cx="30" cy="39" rx="15" ry="13" fill="#f3dc8e"/>
+        <circle   cx="40" cy="29" r="10.5" fill="#f8e6ab"/>
+        <ellipse  cx="25" cy="41" rx="7" ry="8" fill="#e9d17e"/>
+        <circle   cx="43.5" cy="27.5" r="1.9" fill="#57514d"/>
+        <path d="M49 29.5 l7 2.2 -7 2.2 z" fill="#e3a05c"/>
+        <path d="M18 35 q-6 -2 -8 4" stroke="#eccd7d" stroke-width="3.4" stroke-linecap="round"/>
+        <circle cx="37" cy="25" r="2.2" fill="#f2b8a7" opacity=".7"/>
+      </svg>
+      <h2>新手指引</h2>
+      <ul>
+        <li>移动鼠标（手机端滑动手指），让小手轻轻靠近小鸟</li>
+        <li>它有一点点胆小，会扑棱着蹦跳到笼子另一侧，还会冒出可爱的碎碎念</li>
+        <li>每当它换一个方向躲闪，都有 0.3% 的小概率发生奇妙的事</li>
+      </ul>
+      <button class="start-btn" id="guideBtn" type="button">下一步选只小鸟</button>
+    </div>
+  </div>
+
+  <!-- ===================== 角色选择 ===================== -->
+  <div class="sheet hide" id="charSheet">
+    <div class="sheet-card">
+      <h2>选一只小鸟</h2>
+      <p class="tip">不同颜色、不同小特征，挑一个眼缘最好的伙伴吧</p>
+      <div class="pick-grid chars" id="charGrid"></div>
+      <div class="pick-actions">
+        <button class="start-btn" id="charNext" type="button" disabled>下一步挑装扮</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== 皮肤选择 ===================== -->
+  <div class="sheet hide" id="skinSheet">
+    <div class="sheet-card">
+      <h2>给它挑套装扮</h2>
+      <p class="tip">清新可爱的小装扮，随时都可以素颜出场</p>
+      <div class="pick-grid skins" id="skinGrid"></div>
+      <div class="pick-actions">
+        <button class="btn-ghost" id="skinBack" type="button">返回</button>
+        <button class="start-btn" id="beginBtn" type="button" disabled>开始相遇</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右上角：音乐 / 音效开关 -->
+  <button class="mute-btn" id="muteBtn" type="button" aria-label="开关声音" title="声音开关">
+    <svg id="iconSound" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 5 6.5 9H3.5v6h3L11 19z"/>
+      <path d="M15.5 9.5a4 4 0 0 1 0 5"/>
+      <path d="M18 7a8 8 0 0 1 0 10"/>
+    </svg>
+    <svg id="iconMute" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <path d="M11 5 6.5 9H3.5v6h3L11 19z"/>
+      <path d="M16 9.5 21 14.5M21 9.5 16 14.5"/>
+    </svg>
+  </button>
+</section>
+
+<!-- ===================== 游戏2：海星翻翻身 ===================== -->
+<section id="game-star" class="game-page">
+  <button class="back-btn" data-back type="button">&larr; 返回首页</button>
+  <canvas id="cvStar"></canvas>
+  <!-- 右上角：清空大盆里的海星，重新开始 -->
+  <button class="clear-btn" id="starClear" type="button">清空水盆</button>
+  <!-- 玩法指引 -->
+  <p class="guide-tip">拎起海星放到大盆里，帮助它翻个身叭</p>
+  <!-- 全局倍速滑块：控制所有海星翻身快慢 -->
+  <div class="ctrl-pill">
+    <span>翻身倍速</span>
+    <input id="starSpeed" type="range" min="0.25" max="3" step="0.05" value="1">
+    <span id="starSpeedVal">1.0x</span>
+  </div>
+  <button class="mute-btn tone-mute" id="starMute" type="button" aria-label="开关声音" title="声音开关">
+    <svg class="ic-on" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 5 6.5 9H3.5v6h3L11 19z"/><path d="M15.5 9.5a4 4 0 0 1 0 5"/><path d="M18 7a8 8 0 0 1 0 10"/>
+    </svg>
+    <svg class="ic-off" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <path d="M11 5 6.5 9H3.5v6h3L11 19z"/><path d="M16 9.5 21 14.5M21 9.5 16 14.5"/>
+    </svg>
+  </button>
+</section>
+
+<!-- ===================== 游戏3：乱跑小猪乐园 ===================== -->
+<section id="game-pig" class="game-page">
+  <button class="back-btn" data-back type="button">&larr; 返回首页</button>
+  <canvas id="cvPig"></canvas>
+  <p class="tray-hint" id="trayHint">打开「抱起来」开关，点击小猪就能抱起打扮；关掉后点击小猪会摸摸头</p>
+  <button class="carry-toggle" id="carryToggle" type="button">抱起来：关</button>
+  <button class="feed-btn" id="pigFeed" type="button">投喂</button>
+  <!-- 衣服托盘：抱起小猪后点击穿戴（最多同时佩戴两件） -->
+  <div class="clothes-tray" id="pigClothes">
+    <button data-of="bow" type="button" title="粉粉蝴蝶结"><canvas id="pofBow" width="88" height="88"></canvas></button>
+    <button data-of="cap" type="button" title="小黄帽"><canvas id="pofCap" width="88" height="88"></canvas></button>
+    <button data-of="blush" type="button" title="粉粉腮红"><canvas id="pofBlush" width="88" height="88"></canvas></button>
+    <button data-of="flower" type="button" title="小雏菊"><canvas id="pofFlower" width="88" height="88"></canvas></button>
+  </div>
+  <!-- 抱起小猪后出现的「放下」选项 -->
+  <button class="drop-btn" id="pigDrop" type="button">放下它</button>
+  <button class="mute-btn tone-mute" id="pigMute" type="button" aria-label="开关声音" title="声音开关">
+    <svg class="ic-on" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 5 6.5 9H3.5v6h3L11 19z"/><path d="M15.5 9.5a4 4 0 0 1 0 5"/><path d="M18 7a8 8 0 0 1 0 10"/>
+    </svg>
+    <svg class="ic-off" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <path d="M11 5 6.5 9H3.5v6h3L11 19z"/><path d="M16 9.5 21 14.5M21 9.5 16 14.5"/>
+    </svg>
+  </button>
+</section>
+
+<!-- ===================== 游戏4：大眼金鱼看电视 ===================== -->
+<section id="game-fish" class="game-page">
+  <button class="back-btn" data-back type="button">&larr; 返回首页</button>
+  <canvas id="cvFish"></canvas>
+  <!-- 玩法指引 -->
+  <p class="guide-tip">点一下电视机的开关，金鱼就会围过来看电视</p>
+  <button class="mute-btn tone-mute" id="fishMute" type="button" aria-label="开关声音" title="声音开关">
+    <svg class="ic-on" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 5 6.5 9H3.5v6h3L11 19z"/><path d="M15.5 9.5a4 4 0 0 1 0 5"/><path d="M18 7a8 8 0 0 1 0 10"/>
+    </svg>
+    <svg class="ic-off" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <path d="M11 5 6.5 9H3.5v6h3L11 19z"/><path d="M16 9.5 21 14.5M21 9.5 16 14.5"/>
+    </svg>
+  </button>
+</section>
+
+<script>
+'use strict';
+/* ============================================================
+ * ① 可配置参数（新手可改）
+ *    想调小鸟速度 / 彩蛋概率 / 配色 / 互动距离，改这里即可
+ * ============================================================ */
+const CONFIG = {
+  eggProbability : 0.003,  // 彩蛋概率：小鸟【每更换一次躲避方向】抽一次，0.003 = 0.3%
+  birdSpeed      : 4.2,    // 小鸟躲避速度（建议 2~8，越大反应越快）
+  handLerpSpeed  : 9,      // 小手跟随鼠标的顺滑度（越大越跟手，建议 5~14）
+  awareDist      : 260,    // 小鸟能"察觉"到手的最远距离(px)
+  fleeDist       : 150,    // 手进入此距离，小鸟会明显紧张并躲开
+  dodgeDirSpeed  : 55,     // 水平速度超过此值(px/秒)才算"正在向某方向躲闪"
+  rollCooldown   : 500,    // 两次彩蛋抽奖的最小间隔(ms)，防止动画抖动造成误判
+  bubbleChance   : 0.08,   // 每次躲闪互动时，冒出对话小气泡的概率：0.08 = 8%
+  bubbleLife     : 2600,   // 对话气泡停留时长(ms)
+  // 小鸟的碎碎念台词（想加自己的话，直接往数组里写字符串即可）
+  phrases : [
+    '啾！不要过来啦～', '哎呀，好近好近！', '吓、吓我一跳！', '人家会害羞的…',
+    '你想和我做朋友吗？', '哼，抓不到我～', '轻点嘛，我怕痒～',
+    '你的手看起来好温暖', '再靠近我可要鼓气啦！', '今天的风好舒服呀',
+    '等等，让我看看你…', '啾啾，那边有好吃的吗？'
+  ],
+  colors : {
+    cage      : '#6e7279', // 鸟笼线条：柔和浅炭灰
+    cageSoft  : 'rgba(110,114,121,.55)',
+    tray      : '#ece5d8', // 笼底托盘
+    perch     : '#c69e72', // 栖木
+    perchDark : '#a8815a',
+    birdLight : '#f8e6ab', // 小鸟身体高光（鹅黄）
+    birdDark  : '#eccd7d', // 小鸟身体暗部
+    belly     : '#fcf1d6', // 肚皮浅色
+    wing      : '#e9d17e',
+    beak      : '#e3a05c', // 小嘴
+    beakDark  : '#d48d47',
+    blush     : '#f2b8a7', // 腮红
+    ink       : '#57514d', // 眼睛
+    hand      : '#f8d6c1', // 小手肤色
+    handLine  : 'rgba(190,140,110,.45)'
+  }
+};
+
+/* ============================================================
+ * ①-b 角色 & 皮肤定义
+ *   pal  : 身体配色（想改小鸟颜色改这里）
+ *   feat : 外观特征（呆毛 tuft / 脸颊 cheek / 眼睛 eye）
+ *   skin : 清新可爱风格的小装扮（见 drawSkin* 系列函数）
+ * ============================================================ */
+const CHARACTERS = [
+  { id:'huang', name:'鹅黄团团', tag:'经典圆滚滚',
+    feat:{ tuft:'three', cheek:'blush', eye:'round' },
+    pal:{ light:'#f8e6ab', dark:'#eccd7d', belly:'#fcf1d6', wing:'#e9d17e',
+          beak:'#e3a05c', beakDark:'#d48d47', blush:'#f2b8a7' } },
+  { id:'lan', name:'蓝莓啾啾', tag:'清冷小机灵',
+    feat:{ tuft:'curl', cheek:'white', eye:'sparkle' },
+    pal:{ light:'#d3e3f3', dark:'#a9c6e3', belly:'#eef5fc', wing:'#9dc0e2',
+          beak:'#e3a05c', beakDark:'#d48d47', blush:'#f2b8a7' } },
+  { id:'tao', name:'蜜桃朵朵', tag:'甜甜软妹',
+    feat:{ tuft:'twin', cheek:'blush', eye:'happy' },
+    pal:{ light:'#fbdde6', dark:'#f3bccc', belly:'#fff0f4', wing:'#efb3c6',
+          beak:'#e3a05c', beakDark:'#d48d47', blush:'#f2a3b6' } },
+  { id:'cha', name:'抹茶豆豆', tag:'森系小清新',
+    feat:{ tuft:'leaf', cheek:'blush', eye:'dot' },
+    pal:{ light:'#dfecca', dark:'#bad89d', belly:'#f3f8ea', wing:'#aed390',
+          beak:'#d89a58', beakDark:'#c08244', blush:'#f0b49e' } }
+];
+
+const SKINS = [
+  { id:'none',  name:'素颜出场',   tag:'原汁原味',   type:'none' },
+  { id:'bow',   name:'粉粉蝴蝶结', tag:'甜美小心思', type:'bow' },
+  { id:'flower',name:'小雏菊花',   tag:'清新一角',   type:'flower' },
+  { id:'berry', name:'草莓小帽',   tag:'甜甜水果',   type:'berry' },
+  { id:'mint',  name:'薄荷软帽',   tag:'针织暖帽',   type:'mint' },
+  { id:'cape',  name:'星愿斗篷',   tag:'梦幻小披肩', type:'cape' }
+];
+
+/* ============================================================
+ * ② 全局状态
+ * ============================================================ */
+const canvas = document.getElementById('game');
+const ctx    = canvas.getContext('2d');
+const msgEl  = document.getElementById('message');
+
+let selChar = CHARACTERS[0]; // 当前选中的小鸟
+let selSkin = SKINS[0];      // 当前选中的皮肤
+
+// 对话小气泡
+const bubble = { text:'', t:0, life:2600, alpha:0 };
+// 飞走时的浪漫粒子（光点 / 音符 / 速度线）
+const particles = [];
+
+// 躲避小细节：惊跳小跳 / 头顶情绪符号(!/?) / 蹬地尘土
+const emote = { text:'', t:0, life:0 };
+let startleT = 0, prevFear = 0, lastStartleAt = -9999, dashFx = 0;
+
+// 立刻在头顶弹出一个小情绪符号
+function showEmote(text, life){
+  emote.text = text; emote.t = 0; emote.life = life || 900;
+}
+
+let W = 0, H = 0, DPR = 1;
+let cage = null;      // 鸟笼几何信息（resize 时重新计算）
+let layer = null;     // 静态鸟笼离屏画布（带笼门缺口）
+
+// 指针（鼠标/手指统一处理）
+const pointer = { active:false, x:0, y:0 };
+
+// 唯一的一只小手（始终把"手心"朝向小鸟）
+const hand = { x:-999, y:0, tx:0, ty:0, rot:0, alpha:0, face:1 };
+
+// 小鸟状态
+const bird = {
+  x:0, y:0, tx:0,        // 当前位置 / 目标位置
+  face:1,                // 头部朝向：1 右 / -1 左
+  tilt:0,                // 身体倾斜（顺着奔跑方向）
+  fear:0,                // 紧张程度 0~1（影响眼睛/呆毛/抖动）
+  tremble:0,             // 胆怯抖动偏移
+  wing:0,                // 翅膀角度（扑棱 / 飞行）
+  peck:0, hop:0, bob:0,  // 啄卡扣幅度 / 蹦跳高度 / 待机呼吸浮动
+  blinkAt:0, blink:0,    // 眨眼计时
+  alpha:1, scale:1,      // 飞走时淡出缩小
+  fx0:0,                 // 彩蛋飞行起始 x
+  vx:0,                  // 平滑后的水平速度(px/秒)
+  hopPhase:0,            // 蹦跳节拍
+  sx:1, sy:1,            // 挤压拉伸（起跳拉长 / 落地压扁）
+  landT:0,               // 落地缓冲剩余时间(秒)
+  _wasAir:false,         // 上一帧是否离地
+  headLag:0,             // 小脑袋相对身体的迟滞
+  puff:0,                // 炸毛缩脖程度 0~1
+  tail:0,                // 尾巴张合摆动角度
+  flapPhase:0,           // 扑翅节拍
+  sweat:0, sweatT:0,     // 紧张小汗滴透明度 / 计时
+  lookT:2, ruffle:0      // 待机东张西望计时 / 整理羽毛小动作
+};
+
+let state = 'NORMAL';    // NORMAL 正常 / PECK 啄卡扣 / DOOR 开门 / FLY 飞走 / GONE 空笼
+let stateT = 0;          // 当前状态已持续时间(秒)
+let doorAngle = 0;       // 笼门开门进度 0~1（0 关闭，1 完全向外推开）
+let latchT = 0;          // 卡扣被啄开的进度 0~1
+let lastRollAt = -9999;  // 上一次彩蛋抽奖时间(ms)
+let boutDir = 0;         // 本轮正在躲闪的方向 -1/0/1（带迟滞）
+let lastBoutDir = 0;     // 上一次已参与抽奖的躲闪方向
+let started = false;     // 是否已通过新手指引开始
+let inited = false;
+
+/* ============================================================
+ * ③ 布局：自适应计算鸟笼几何，并生成静态笼体离屏层
+ * ============================================================ */
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const rect = canvas.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  canvas.width  = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  const cx    = W / 2;
+  const halfW = Math.min(W * 0.31, 215);                 // 鸟笼半宽
+  const top   = Math.max(46, H * 0.085);                 // 笼顶位置
+  const archH = Math.max(58, Math.min(H * 0.16, 108));   // 圆拱高度
+  const shoulderY = top + archH;                         // 拱顶与笼身相接处
+  const baseY = H * 0.82;                                // 笼底位置
+
+  cage = {
+    cx, halfW, top, archH, shoulderY, baseY,
+    perchY : shoulderY + (baseY - shoulderY - 30) * 0.52 + 4, // 栖木高度
+    perchHalf : halfW - 30
+  };
+  // —— 笼门（位于笼身右前侧，大小足够小鸟穿过）——
+  cage.doorW      = Math.min(92, halfW * 0.46);
+  cage.doorX1     = cx + halfW * 0.50;
+  cage.doorX0     = cage.doorX1 - cage.doorW;
+  cage.doorBottom = baseY - 22;
+  cage.doorTop    = cage.perchY - 64;
+  cage.latchX     = cage.doorX0 + 10;   // 卡扣位置（小鸟要啄的地方）
+  cage.latchY     = cage.doorTop + 10;
+
+  buildCageLayer();
+
+  if(!inited){
+    bird.x = bird.tx = cx;
+    bird.y = cage.perchY;
+    bird.blinkAt = performance.now() + 2200;
+    inited = true;
+  }else{
+    bird.y = cage.perchY;
+    bird.x = Math.max(cx - cage.perchHalf, Math.min(cx + cage.perchHalf, bird.x));
+    bird.tx = bird.x;
+  }
+}
+
+// 生成静态笼体（圆拱、栏杆、栖木、托盘），笼门区域预留真实缺口
+function buildCageLayer(){
+  if(canvas.width <= 0 || canvas.height <= 0) return; // 布局未就绪，跳过
+  layer = document.createElement('canvas');
+  layer.width = canvas.width;
+  layer.height = canvas.height;
+  const g = layer.getContext('2d');
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  const c = CONFIG.colors;
+  // 地面柔和投影
+  g.fillStyle = 'rgba(110,105,95,.08)';
+  g.beginPath();
+  g.ellipse(cage.cx, cage.baseY + 22, cage.halfW * 1.18, 15, 0, 0, Math.PI * 2);
+  g.fill();
+
+  g.strokeStyle = c.cage;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+
+  // —— 顶部挂钩 ——
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(cage.cx, cage.top + 2);
+  g.lineTo(cage.cx, cage.top - 7);
+  g.moveTo(cage.cx, cage.top - 9);
+  g.arc(cage.cx, cage.top - 15, 6.5, Math.PI * 0.12, Math.PI * 1.92);
+  g.stroke();
+
+  // —— 笼身外轮廓：直壁 + 圆拱顶 ——
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(cage.cx - cage.halfW, cage.baseY - 22);
+  g.lineTo(cage.cx - cage.halfW, cage.shoulderY);
+  g.ellipse(cage.cx, cage.shoulderY, cage.halfW, cage.archH, 0, Math.PI, 2 * Math.PI);
+  g.lineTo(cage.cx + cage.halfW, cage.baseY - 22);
+  g.stroke();
+
+  // —— 竖向栏杆（经过笼门处自动断开）——
+  g.lineWidth = 2;
+  [-0.66, -0.33, 0, 0.33, 0.66].forEach(function(f){
+    const x = cage.cx + cage.halfW * f;
+    const yTop = cage.shoulderY - cage.archH * Math.sqrt(1 - f * f);
+    vBar(g, x, yTop, cage.baseY - 24);
+  });
+
+  // —— 两条横向环栏（笼门处同样断开）——
+  g.lineWidth = 2.2;
+  hBar(g, cage.cx - cage.halfW + 2, cage.cx + cage.halfW - 2, cage.shoulderY);
+  const midY = cage.shoulderY + (cage.perchY - cage.shoulderY) * 0.42;
+  hBar(g, cage.cx - cage.halfW + 2, cage.cx + cage.halfW - 2, midY);
+
+  drawTray(g);   // 笼底托盘
+  drawPerch(g);  // 木质栖木
+}
+
+// 竖线，遇到笼门矩形自动分成两段
+function vBar(g, x, y1, y2){
+  g.beginPath();
+  if(x > cage.doorX0 - 3 && x < cage.doorX1 + 3){
+    if(y1 < cage.doorTop - 2){ g.moveTo(x, y1); g.lineTo(x, cage.doorTop - 2); }
+    if(y2 > cage.doorBottom + 2){ g.moveTo(x, cage.doorBottom + 2); g.lineTo(x, y2); }
+  }else{
+    g.moveTo(x, y1); g.lineTo(x, y2);
+  }
+  g.stroke();
+}
+
+// 横线，遇到笼门矩形自动分成两段
+function hBar(g, x1, x2, y){
+  g.beginPath();
+  if(y > cage.doorTop - 2 && y < cage.doorBottom + 2){
+    g.moveTo(x1, y); g.lineTo(Math.min(x2, cage.doorX0 - 2), y);
+    g.moveTo(Math.max(x1, cage.doorX1 + 2), y); g.lineTo(x2, y);
+  }else{
+    g.moveTo(x1, y); g.lineTo(x2, y);
+  }
+  g.stroke();
+}
+
+// 笼底托盘
+function drawTray(g){
+  const c = CONFIG.colors;
+  const cx = cage.cx, by = cage.baseY, rx = cage.halfW * 1.06;
+  // 托盘主体
+  g.fillStyle = c.tray;
+  g.beginPath();
+  g.moveTo(cx - rx, by - 12);
+  g.lineTo(cx - rx * 1.02, by + 6);
+  g.ellipse(cx, by + 6, rx * 1.02, 11, 0, 0, Math.PI);
+  g.lineTo(cx + rx, by - 12);
+  g.ellipse(cx, by - 12, rx, 12, 0, 0, -Math.PI, true);
+  g.closePath();
+  g.fill();
+  // 顶部椭圆描边
+  g.lineWidth = 3;
+  g.strokeStyle = c.cage;
+  g.beginPath();
+  g.ellipse(cx, by - 12, rx, 12, 0, 0, Math.PI * 2);
+  g.stroke();
+}
+
+// 木质栖木
+function drawPerch(g){
+  const c = CONFIG.colors;
+  const x0 = cage.cx - cage.halfW + 28;
+  const x1 = cage.cx + cage.halfW - 28;
+  g.lineCap = 'round';
+  g.strokeStyle = c.perch;
+  g.lineWidth = 9;
+  g.beginPath(); g.moveTo(x0, cage.perchY); g.lineTo(x1, cage.perchY); g.stroke();
+  // 下方轻微暗色，表现圆木体积
+  g.strokeStyle = c.perchDark;
+  g.globalAlpha = .35;
+  g.lineWidth = 2.4;
+  g.beginPath(); g.moveTo(x0 + 6, cage.perchY + 2.5); g.lineTo(x1 - 6, cage.perchY + 2.5); g.stroke();
+  g.globalAlpha = 1;
+  // 两端木轴
+  g.fillStyle = c.perchDark;
+  g.beginPath(); g.arc(x0, cage.perchY, 4.2, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(x1, cage.perchY, 4.2, 0, Math.PI * 2); g.fill();
+}
+/* ============================================================
+ * ④ 画风素材区：笼门 / 小鸟 / 小手 全部为 Canvas 手绘
+ *    想换造型，直接改下面三个绘制函数即可
+ * ============================================================ */
+
+// —— 笼门（铰链在右侧，doorAngle 0→1 向外推开，侧视透视压扁）——
+function drawDoor(g){
+  const c = CONFIG.colors;
+  const x0 = cage.doorX0, x1 = cage.doorX1;
+  const top = cage.doorTop, bot = cage.doorBottom;
+  const w = x1 - x0, h = bot - top, cy = (top + bot) / 2;
+
+  const op = clamp(doorAngle, 0, 1);   // 开门进度 0~1
+  g.save();
+  g.translate(x1, cy);                 // 以右侧铰链为轴
+  // 侧视角透视：门板向铰链方向"压扁"+微微外倾+变淡，像被推向外面前后微敞
+  g.scale(1 - 0.92 * op, 1);
+  g.rotate(-0.14 * op);
+  g.globalAlpha = 1 - 0.35 * op;
+
+  g.strokeStyle = c.cage;
+  g.lineCap = 'round'; g.lineJoin = 'round';
+
+  // 门框（圆角矩形）
+  g.lineWidth = 2.6;
+  roundRect(g, -w + 2, top - cy + 2, w - 4, h - 4, 9);
+  g.stroke();
+  // 门内两根细栏
+  g.lineWidth = 1.8;
+  g.beginPath();
+  g.moveTo(-w * 0.62, top - cy + 8); g.lineTo(-w * 0.62, bot - cy - 8);
+  g.moveTo(-w * 0.30, top - cy + 8); g.lineTo(-w * 0.30, bot - cy - 8);
+  g.stroke();
+
+  // —— 卡扣：被啄后旋转、掉落、淡出（latchT 0→1）——
+  const ly = latchT * 26, lr = latchT * 1.3;
+  g.save();
+  g.globalAlpha = (1 - 0.35 * op) * (1 - latchT * 0.9);
+  g.translate(-w + 9, top - cy + 9 + ly);
+  g.rotate(lr);
+  g.strokeStyle = c.cage;
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(-5, -4); g.lineTo(5, -4); g.lineTo(5, 4);   // 小 L 形卡扣
+  g.stroke();
+  g.fillStyle = c.cage;
+  g.beginPath(); g.arc(-4, -4, 2.4, 0, Math.PI * 2); g.fill();
+  g.restore();
+
+  g.restore();
+}
+
+// 圆角矩形路径工具
+function roundRect(g, x, y, w, h, r){
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+
+// —— 软萌小鸟：实际绘制函数（角色/皮肤均由参数 o 驱动，可复用于选择页预览）——
+function drawBirdAt(g, o){
+  const pal = o.pal, feat = o.feat;
+  const puff = o.puff || 0;
+  const bodyR = 1 + puff * 0.12;   // 炸毛时身体膨起一圈
+  const tuckY = puff * 3;          // 紧张时缩脖，头往下收
+  const skinT = o.skinType || 'none';
+  // 头顶有帽子/花结等头饰时，呆毛收起来避免重叠
+  const hideTuft = (skinT === 'bow' || skinT === 'flower' || skinT === 'berry' || skinT === 'mint');
+
+  g.save();
+  g.translate(o.x + o.tremble, o.y - o.hop + o.bob); // 脚的锚点
+  g.globalAlpha = o.alpha;
+  g.scale(o.s * o.sx, o.s * o.sy); // 起跳拉长 / 落地压扁
+  g.rotate(o.tilt);
+
+  // —— 两只小脚：站稳时小脚趾抓住栖木；空中向后收起更有弹性 ——
+  g.strokeStyle = CONFIG.colors.perchDark;
+  g.lineWidth = 2;
+  g.lineCap = 'round';
+  if(o.hop <= 2){
+    [-7, 7].forEach(function(fx){
+      g.beginPath();
+      g.moveTo(fx, -4); g.lineTo(fx, 3);
+      g.moveTo(fx, 3); g.lineTo(fx - 4, 6);
+      g.moveTo(fx, 3); g.lineTo(fx + 4, 6);
+      g.stroke();
+    });
+  }else{
+    // 空中收腿：小爪子向后下方蜷起，落地前一刻再张开
+    [-7, 7].forEach(function(fx){
+      g.beginPath();
+      g.moveTo(fx, -4);
+      g.quadraticCurveTo(fx + 3, -1, fx - 2, 2);
+      g.stroke();
+    });
+  }
+
+  drawSkinBack(g, o, skinT); // 斗篷等"穿在身后"的装扮
+
+  // —— 尾巴：两片小羽毛随奔跑方向张合、轻摆 ——
+  g.save();
+  g.translate(-19, -24);
+  g.rotate(o.tail);
+  g.fillStyle = pal.dark;
+  g.beginPath(); g.ellipse(-4, -3, 5, 10, -0.55 + o.tail * 0.6, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(-5, 3, 5, 9, 0.25 + o.tail * 0.6, 0, Math.PI * 2); g.fill();
+  g.restore();
+
+  // 圆滚滚的身体（径向渐变，柔和高光；炸毛时变大）
+  const bodyGrad = g.createRadialGradient(-7, -38, 4, 0, -26 + tuckY, 32);
+  bodyGrad.addColorStop(0, pal.light);
+  bodyGrad.addColorStop(1, pal.dark);
+  g.fillStyle = bodyGrad;
+  g.beginPath(); g.ellipse(0, -26 + tuckY, 23 * bodyR, 25 * bodyR, 0, 0, Math.PI * 2); g.fill();
+
+  // 浅色肚皮
+  g.fillStyle = pal.belly;
+  g.beginPath(); g.ellipse(4 * o.face, -19 + tuckY, 13.5 * bodyR, 15, 0, 0, Math.PI * 2); g.fill();
+
+  // —— 小翅膀（逃命时快速扑棱，待机时轻轻整理羽毛）——
+  g.save();
+  g.translate(-5 * o.face, -28 + tuckY);
+  g.rotate(-o.wing);
+  g.fillStyle = pal.wing;
+  g.beginPath(); g.ellipse(0, 2, 8.5, 14, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.45)';
+  g.lineWidth = 1.4;
+  g.beginPath(); g.arc(0, 4, 5, -1.1, 1.1); g.stroke();
+  g.restore();
+
+  drawSkinNeck(g, o, skinT); // 围巾 / 领口等装扮
+
+  // —— 头部组（整体转向、身体窜出时小脑袋慢半拍、低头啄卡扣）——
+  g.save();
+  g.translate(3 * o.face + o.headLag, -30 + tuckY);
+  g.scale(o.face, 1);
+  g.rotate(o.peck * 0.6);
+
+  if(!hideTuft) drawTuft(g, o, pal, feat.tuft); // 角色呆毛特征
+
+  // 圆圆的头
+  const headGrad = g.createRadialGradient(-4, -20, 3, 2, -14, 20);
+  headGrad.addColorStop(0, pal.light);
+  headGrad.addColorStop(1, pal.dark);
+  g.fillStyle = headGrad;
+  g.beginPath(); g.arc(2, -14, 18.5, 0, Math.PI * 2); g.fill();
+
+  drawCheek(g, o, pal, feat.cheek);  // 脸颊特征（腮红 / 白绒团）
+  drawEyes(g, o, feat.eye);         // 眼睛特征（圆眼 / 星星眼 / 笑眼 / 豆豆眼）
+
+  // 紧张到微微喘气时的一滴小汗（浅蓝色，软萌不惊悚）
+  if(o.sweat > 0.02){
+    g.save();
+    g.globalAlpha = o.alpha * o.sweat;
+    g.fillStyle = '#bcd8e8';
+    g.beginPath();
+    g.moveTo(15, -27);
+    g.quadraticCurveTo(21, -19, 18, -14);
+    g.quadraticCurveTo(13, -19, 15, -27);
+    g.fill();
+    g.fillStyle = 'rgba(255,255,255,.8)';
+    g.beginPath(); g.arc(16.5, -20, 1.1, 0, Math.PI * 2); g.fill();
+    g.restore();
+  }
+
+  // 小嘴：上喙 + 下喙（啄卡扣 / 紧张喘气时微微张开）
+  const open = o.peck * 2.4 + o.fear * 1.4 + (o.talk || 0) * 1.8;
+  g.fillStyle = pal.beak;
+  g.beginPath();
+  g.moveTo(15, -13); g.lineTo(25, -10); g.lineTo(15, -7);
+  g.closePath(); g.fill();
+  g.fillStyle = pal.beakDark;
+  g.beginPath();
+  g.moveTo(15, -6 + open);
+  g.lineTo(22, -10 + open * 0.5);
+  g.lineTo(15, -9);
+  g.closePath(); g.fill();
+
+  drawSkinHead(g, o, skinT); // 帽子 / 角 / 耳朵等头饰装扮
+
+  g.restore(); // 头部组
+  g.restore(); // 整体
+}
+
+// 主画布上的小鸟：由全局 bird 状态 + 选中的角色/皮肤驱动
+function drawBird(g, time){
+  if(state === 'GONE') return;
+  drawBirdAt(g, {
+    x:bird.x, y:bird.y, s:bird.scale, face:bird.face, tilt:bird.tilt,
+    fear:bird.fear, wing:bird.wing, peck:bird.peck, hop:bird.hop, bob:bird.bob,
+    sx:bird.sx, sy:bird.sy, tremble:bird.tremble, puff:bird.puff,
+    tail:bird.tail, sweat:bird.sweat, headLag:bird.headLag, alpha:bird.alpha,
+    blink:bird.blink, talk:bird.talk || 0, pal:selChar.pal, feat:selChar.feat, skinType:selSkin.type
+  });
+}
+
+/* —— 角色特征：呆毛 —— */
+function drawTuft(g, o, pal, type){
+  const raise = o.fear * 3;
+  g.strokeStyle = pal.dark;
+  g.lineWidth = 2.4;
+  g.lineCap = 'round';
+  g.beginPath();
+  if(type === 'curl'){
+    // 一根卷卷呆毛
+    g.moveTo(2, -17 - raise);
+    g.quadraticCurveTo(-2, -25 - raise, 5, -30 - raise);
+    g.quadraticCurveTo(11, -34 - raise, 9, -28 - raise);
+  }else if(type === 'twin'){
+    // 左右两个小揪揪
+    g.moveTo(-2, -15 - raise); g.quadraticCurveTo(-10, -21 - raise, -13, -26 - raise);
+    g.moveTo(4, -16 - raise);  g.quadraticCurveTo(11, -22 - raise, 14, -27 - raise);
+  }else if(type === 'leaf'){
+    // 小嫩芽（绿色双叶）
+    g.fillStyle = '#8fbf6e';
+    g.strokeStyle = '#7cab5d';
+    g.moveTo(1, -15); g.quadraticCurveTo(1, -21, 1, -25);
+    g.stroke();
+    g.fillStyle = '#9ccb7c';
+    g.beginPath(); g.ellipse(-4, -26, 3.2, 6, -0.5, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(6, -27, 3.2, 6, 0.5, 0, Math.PI * 2); g.fill();
+  }else{
+    // 经典三根呆毛
+    g.moveTo(-3, -16 - raise); g.quadraticCurveTo(-8, -22 - raise, -10, -27 - raise);
+    g.moveTo(1, -17 - raise);  g.quadraticCurveTo(0, -23 - raise, 1, -29 - raise);
+    g.moveTo(5, -15 - raise);  g.quadraticCurveTo(9, -21 - raise, 12, -25 - raise);
+  }
+  g.stroke();
+}
+
+/* —— 角色特征：脸颊 —— */
+function drawCheek(g, o, pal, type){
+  if(type === 'white'){
+    // 白绒绒的两团圆脸
+    g.fillStyle = 'rgba(255,255,255,.85)';
+    g.beginPath(); g.arc(5, -9, 4.6, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(11, -10, 3.6, 0, Math.PI * 2); g.fill();
+  }else{
+    g.fillStyle = pal.blush;
+    g.globalAlpha = o.alpha * .65;
+    g.beginPath(); g.arc(9, -8, 4, 0, Math.PI * 2); g.fill();
+    g.globalAlpha = o.alpha;
+  }
+}
+
+/* —— 角色特征：眼睛 —— */
+function drawEyes(g, o, type){
+  const ink = '#57514d';
+  g.save();
+  g.translate(7, -17);
+  g.scale(1, 1 - o.blink * 0.92);
+  g.fillStyle = ink;
+  g.strokeStyle = ink;
+  if(type === 'happy'){
+    // 弯弯笑眼 ^‿^
+    g.lineWidth = 2;
+    g.beginPath(); g.arc(0, 1.5, 3.4, Math.PI * 1.12, Math.PI * 1.88); g.stroke();
+  }else if(type === 'dot'){
+    // 慵懒豆豆眼
+    g.beginPath(); g.arc(0, 0, 2.5, 0, Math.PI * 2); g.fill();
+  }else{
+    const r = type === 'sparkle' ? 3.9 : 3.3 + o.fear * 0.9;
+    g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(-1.1, -1.2, 1.2, 0, Math.PI * 2); g.fill();
+    if(type === 'sparkle'){
+      g.beginPath(); g.arc(1.2, 1, 0.8, 0, Math.PI * 2); g.fill();
+    }
+  }
+  g.restore();
+}
+
+/* —— 皮肤：穿在身后的部分（星愿斗篷）—— */
+function drawSkinBack(g, o, t){
+  if(t !== 'cape') return;
+  g.save();
+  g.fillStyle = '#93a0cf';
+  g.beginPath();
+  g.moveTo(-15, -46);
+  g.quadraticCurveTo(-26, -26, -20, -8);
+  g.quadraticCurveTo(0, -2, 20, -8);
+  g.quadraticCurveTo(26, -26, 15, -46);
+  g.quadraticCurveTo(0, -40, -15, -46);
+  g.fill();
+  // 斗篷下摆的小波边
+  g.fillStyle = '#8290c4';
+  [-14, 0, 14].forEach(function(x){
+    g.beginPath(); g.arc(x, -8, 5, 0, Math.PI); g.fill();
+  });
+  // 小星星印花
+  g.fillStyle = '#ffe9a8';
+  drawStar(g, -9, -30, 2.6); drawStar(g, 8, -22, 2.2); drawStar(g, 0, -38, 1.8);
+  g.restore();
+}
+
+/* —— 皮肤：脖子处的部分（围巾 / 斗篷领口）—— */
+function drawSkinNeck(g, o, t){
+  g.save();
+  if(t === 'mint'){
+    // 薄荷绿针织围巾（脖子一圈 + 一截垂下的巾尾）
+    g.fillStyle = '#a8d8c4';
+    g.beginPath(); g.ellipse(0, -43, 15, 6.5, 0, 0, Math.PI * 2); g.fill();
+    roundRect(g, 8 * o.face, -42, 6, 15, 3); g.fill();
+    g.fillStyle = '#93ccb4';
+    g.fillRect(8 * o.face, -32, 6, 2); g.fillRect(8 * o.face, -28, 6, 2);
+  }else if(t === 'cape'){
+    // 领口的小星星搭扣
+    g.fillStyle = '#ffe9a8';
+    drawStar(g, 0, -44, 3.6);
+  }
+  g.restore();
+}
+
+/* —— 皮肤：头饰（在头部局部坐标系内绘制）—— */
+function drawSkinHead(g, o, t){
+  g.save();
+  g.lineJoin = 'round';
+  if(t === 'bow'){
+    // —— 粉粉蝴蝶结：头顶右侧一只软软的小丝带结 ——
+    g.save();
+    g.translate(11, -27);
+    g.rotate(-0.32);
+    g.fillStyle = '#f4aabc';
+    g.strokeStyle = '#e58ea6'; g.lineWidth = 1.1;
+    [-1, 1].forEach(function(sgn){
+      g.beginPath();
+      g.moveTo(0, 0);
+      g.quadraticCurveTo(sgn * 7.5, -5.5, sgn * 8.5, 0);
+      g.quadraticCurveTo(sgn * 7.5, 5.5, 0, 0);
+      g.closePath(); g.fill(); g.stroke();
+    });
+    g.fillStyle = '#ef93ab';
+    g.beginPath(); g.arc(0, 0, 2.6, 0, Math.PI * 2); g.fill();
+    g.restore();
+  }
+  else if(t === 'flower'){
+    // —— 小雏菊花：头顶左侧一朵六瓣小白花 + 鹅黄花心 ——
+    g.save();
+    g.translate(-9, -26);
+    g.rotate(0.24);
+    g.fillStyle = '#ffffff';
+    g.strokeStyle = '#e6dfd0'; g.lineWidth = 0.8;
+    for(var i = 0; i < 6; i++){
+      g.save(); g.rotate(i * Math.PI / 3);
+      g.beginPath(); g.ellipse(0, -4.6, 2.2, 4.2, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.restore();
+    }
+    g.fillStyle = '#f5c96b';
+    g.beginPath(); g.arc(0, 0, 2.6, 0, Math.PI * 2); g.fill();
+    g.restore();
+  }
+  else if(t === 'berry'){
+    // —— 草莓帽：红色草莓兜 + 绿色萼叶 + 小点点 ——
+    g.fillStyle = '#ee8a86';
+    g.beginPath();
+    g.moveTo(-15, -19);
+    g.quadraticCurveTo(-16, -34, 2, -35);
+    g.quadraticCurveTo(17, -34, 16, -19);
+    g.quadraticCurveTo(8, -15, 0, -18);
+    g.quadraticCurveTo(-8, -15, -15, -19);
+    g.fill();
+    g.fillStyle = '#7cab5d';
+    for(var i = -2; i <= 2; i++){
+      g.save(); g.translate(i * 4.2, -33); g.rotate(i * 0.28);
+      g.beginPath(); g.ellipse(0, -2, 2.2, 4, 0, 0, Math.PI * 2); g.fill();
+      g.restore();
+    }
+    g.fillStyle = '#fce3b0';
+    [[-8,-27],[-1,-30],[7,-27],[-4,-23],[5,-22]].forEach(function(p){
+      g.beginPath(); g.ellipse(p[0], p[1], 1, 1.5, 0.4, 0, Math.PI * 2); g.fill();
+    });
+  }
+  else if(t === 'mint'){
+    // —— 薄荷针织软帽：翻边帽檐 + 圆顶 + 顶端小毛球 ——
+    g.fillStyle = '#bfe4d6';
+    g.beginPath();
+    g.moveTo(-15, -18);
+    g.quadraticCurveTo(-15, -36, 2, -36);
+    g.quadraticCurveTo(17, -35, 16, -18);
+    g.closePath(); g.fill();
+    g.fillStyle = '#a8d8c4'; // 翻边
+    roundRect(g, -16, -22, 33, 7, 3.5); g.fill();
+    g.fillStyle = '#eafaf3'; // 小毛球
+    g.beginPath(); g.arc(2, -36.5, 4.2, 0, Math.PI * 2); g.fill();
+  }
+  g.restore();
+}
+
+// 小五角星工具
+function drawStar(g, x, y, r){
+  g.beginPath();
+  for(var i = 0; i < 5; i++){
+    var a = -Math.PI / 2 + i * Math.PI * 2 / 5;
+    var a2 = a + Math.PI / 5;
+    g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+    g.lineTo(x + Math.cos(a2) * r * 0.45, y + Math.sin(a2) * r * 0.45);
+  }
+  g.closePath(); g.fill();
+}
+
+/* —— 卡通手套小手（白填充黑描边、四指并拢微张，参考手绘图）—— */
+/* 手套轮廓：本地坐标系，手指朝上、拇指朝左，整体约 46×50 */
+function glovePath(g){
+  g.beginPath();
+  /* 手腕左下 → 拇指（左侧粗短圆润） */
+  g.moveTo(-12, 18);
+  g.quadraticCurveTo(-17, 16, -20, 11);
+  g.quadraticCurveTo(-26, 9, -26, 2);
+  g.quadraticCurveTo(-26, -5, -19, -5);
+  g.quadraticCurveTo(-14, -5, -12, -9);
+  /* 食指 */
+  g.quadraticCurveTo(-15, -13, -14, -18);
+  g.quadraticCurveTo(-13, -25, -7, -25);
+  g.quadraticCurveTo(-2, -25, -2, -18);
+  /* 中指（最长） */
+  g.quadraticCurveTo(-2, -27, 4, -27);
+  g.quadraticCurveTo(9, -27, 9, -18);
+  /* 无名指 */
+  g.quadraticCurveTo(10, -24, 15, -23);
+  g.quadraticCurveTo(19, -22, 18, -15);
+  /* 小指 */
+  g.quadraticCurveTo(22, -16, 24, -11);
+  g.quadraticCurveTo(26, -5, 20, -3);
+  /* 手掌右缘 → 手腕收口 */
+  g.quadraticCurveTo(19, 6, 13, 13);
+  g.quadraticCurveTo(6, 19, -2, 19);
+  g.quadraticCurveTo(-8, 19, -12, 18);
+  g.closePath();
+}
+function drawHand(g, h){
+  if(h.alpha <= 0.01) return;
+  g.save();
+  g.translate(h.x, h.y);
+  g.rotate(h.rot);
+  g.scale(h.face, 1); // 位于小鸟哪一侧就镜像
+  g.globalAlpha = h.alpha;
+
+  g.fillStyle = '#fffdfb'; g.strokeStyle = '#40373a';
+  g.lineWidth = 3; g.lineJoin = 'round'; g.lineCap = 'round';
+  glovePath(g); g.fill(); g.stroke();
+  /* 两道指缝短弧线 */
+  g.lineWidth = 2;
+  g.beginPath(); g.moveTo(-5, -16); g.quadraticCurveTo(-5.6, -11, -5, -5); g.stroke();
+  g.beginPath(); g.moveTo(6.5, -18); g.quadraticCurveTo(6.2, -12, 6.8, -6); g.stroke();
+
+  g.restore();
+}
+
+/* —— 对话小气泡 —— */
+function drawBubble(g, now){
+  if(bubble.alpha <= 0.02 || !bubble.text) return;
+  // 气泡浮在小鸟头顶偏另一侧，超出边缘自动夹回
+  let bx = clamp(bird.x, 76, W - 76);
+  let by = bird.y - bird.hop - 84;
+  if(by < 26) by = 26;
+
+  g.save();
+  g.globalAlpha = bubble.alpha;
+  g.font = '300 13px "PingFang SC","Microsoft YaHei",sans-serif';
+  const maxW = 132;
+  // 中文按字数折行
+  const chars = bubble.text.split('');
+  const lines = []; let line = '';
+  chars.forEach(function(ch){
+    if(g.measureText(line + ch).width > maxW){ lines.push(line); line = ch; }
+    else line += ch;
+  });
+  if(line) lines.push(line);
+
+  const padX = 13, padY = 9, lh = 19;
+  const bw = Math.min(maxW + padX * 2, 160);
+  const bh = lines.length * lh + padY * 2 - 4;
+
+  // 小尾巴指向小鸟头顶
+  g.fillStyle = 'rgba(255,255,255,.96)';
+  g.strokeStyle = 'rgba(110,114,121,.25)';
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.moveTo(bx - 7, by + bh / 2 - 2);
+  g.lineTo(bx - 16, by + bh / 2 + 13);
+  g.lineTo(bx + 1, by + bh / 2 + 3);
+  g.closePath(); g.fill(); g.stroke();
+
+  // 气泡主体
+  roundRect(g, bx - bw / 2, by - bh / 2, bw, bh, 13);
+  g.fill(); g.stroke();
+
+  // 文字
+  g.fillStyle = '#66696f';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  lines.forEach(function(s, i){
+    g.fillText(s, bx, by - ((lines.length - 1) * lh) / 2 + i * lh);
+  });
+  g.restore();
+}
+
+/* —— 笼门打开后的温柔光 —— */
+function drawDoorGlow(g, time){
+  const open = clamp(doorAngle, 0, 1);
+  if(open <= 0.03) return;
+  const gx = (cage.doorX0 + cage.doorX1) / 2;
+  const gy = (cage.doorTop + cage.doorBottom) / 2;
+  const pulse = 0.85 + Math.sin(time * 2.2) * 0.15;
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  const grad = g.createRadialGradient(gx, gy, 4, gx, gy, 150 * open + 30);
+  grad.addColorStop(0, 'rgba(255,244,205,' + (0.42 * open * pulse) + ')');
+  grad.addColorStop(1, 'rgba(255,244,205,0)');
+  g.fillStyle = grad;
+  g.beginPath(); g.arc(gx, gy, 160, 0, Math.PI * 2); g.fill();
+  // 三束斜斜的光线
+  g.strokeStyle = 'rgba(255,246,214,' + (0.22 * open * pulse) + ')';
+  g.lineWidth = 9; g.lineCap = 'round';
+  [-0.5, 0, 0.5].forEach(function(a){
+    g.beginPath();
+    g.moveTo(gx, gy);
+    g.lineTo(gx + Math.sin(a) * 130, gy - 150 + Math.cos(a) * 30);
+    g.stroke();
+  });
+  g.restore();
+}
+
+/* —— 粒子：飞走拖尾（光点/音符/速度线）与躲避尘土 —— */
+function spawnParticle(type, x, y){
+  const p = { type, x, y, vx:0, vy:0, life:0, max:2.2, size:5, rot:Math.random()*Math.PI,
+              vr:(Math.random()-.5)*3, alpha:1 };
+  if(type === 'spark'){
+    p.vx = (Math.random()-.5)*26; p.vy = -14 - Math.random()*22;
+    p.max = 1.3 + Math.random(); p.size = 2.2 + Math.random()*2.4;
+  }else if(type === 'note'){
+    p.vx = -34 - Math.random()*16; p.vy = -34 - Math.random()*10;
+    p.max = 1.8; p.text = Math.random() < 0.5 ? '♪' : '♫';
+    p.color = ['#e7b870','#9db9d8','#e3a0b4','#a9c98f'][Math.floor(Math.random()*4)];
+  }else if(type === 'streak'){
+    p.vx = -120 - Math.random()*60; p.vy = 18 + Math.random()*20;
+    p.max = 0.5; p.size = 12 + Math.random()*14;
+  }else if(type === 'dash'){
+    // 躲避速度线：浅暖灰短线，随小鸟疾奔拖在身后
+    p.vx = -(bird.vx || 0) * 0.3; p.vy = (Math.random() - .5) * 8;
+    p.max = 0.38; p.size = 12 + Math.random() * 10;
+  }
+  particles.push(p);
+}
+
+// 起跳/落地时脚下的软软尘土
+function spawnDust(n){
+  for(let i = 0; i < n; i++){
+    particles.push({
+      type:'dust', x: bird.x + (Math.random() - .5) * 16, y: bird.y + 2,
+      vx: (Math.random() - .5) * 40, vy: -6 - Math.random() * 10,
+      life:0, max:.45 + Math.random() * .25, size:2.5 + Math.random() * 2.5,
+      rot:0, vr:0, alpha:.5
+    });
+  }
+}
+function drawParticles(g, dt){
+  for(let i = particles.length - 1; i >= 0; i--){
+    const p = particles[i];
+    p.life += dt;
+    if(p.life >= p.max){ particles.splice(i, 1); continue; }
+    const k = p.life / p.max;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy += (p.type === 'note' ? -2 : 10) * dt; // 音符上浮，其余轻轻下坠
+    p.vx *= 0.99;
+    p.rot += p.vr * dt;
+    const fade = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
+
+    g.save();
+    g.globalAlpha = fade * p.alpha;
+    g.translate(p.x, p.y);
+    if(p.type === 'spark'){
+      const tw = 0.6 + Math.abs(Math.sin(p.life * 9)) * 0.6;
+      g.fillStyle = '#fff3c4';
+      drawStar(g, 0, 0, p.size * tw);
+    }else if(p.type === 'note'){
+      g.fillStyle = p.color;
+      g.font = (15 + p.size) + 'px serif';
+      g.textAlign = 'center';
+      g.fillText(p.text, 0, 0);
+    }else if(p.type === 'streak'){
+      g.strokeStyle = 'rgba(255,255,255,.7)';
+      g.lineWidth = 2; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(-p.size, 0); g.stroke();
+    }else if(p.type === 'dash'){
+      // 躲避速度线
+      g.strokeStyle = 'rgba(170,157,134,.55)';
+      g.lineWidth = 2; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(-p.size / 2, 0); g.lineTo(p.size / 2, 0); g.stroke();
+    }else if(p.type === 'dust'){
+      // 柔软尘土：膨胀变淡的小圆团
+      g.globalAlpha = fade * p.alpha * (1 - k);
+      g.fillStyle = '#c9b7a1';
+      g.beginPath(); g.arc(0, 0, p.size * (1 + k * 1.8), 0, Math.PI * 2); g.fill();
+    }
+    g.restore();
+  }
+}
+
+// —— 每帧渲染 ——
+function render(time, dt){
+  ctx.clearRect(0, 0, W, H);
+  if(!layer || layer.width <= 0 || layer.height <= 0){
+    buildCageLayer(); // 离屏层尚未就绪时尝试重建
+  }
+  if(layer && layer.width > 0 && layer.height > 0){
+    ctx.drawImage(layer, 0, 0, W, H); // 静态笼体（离屏层已按 DPR 渲染）
+  }
+  drawDoorGlow(ctx, time);         // 开门后洒进来的光
+  drawDoor(ctx);
+  drawBird(ctx, time);
+  drawParticles(ctx, dt);          // 光点 / 音符 / 尘土 / 速度线
+  drawEmote(ctx);                  // 头顶小情绪（! / ?）
+  drawHand(ctx, hand);
+  drawBubble(ctx, performance.now());
+}
+
+/* —— 头顶小情绪符号（! 惊吓 / ? 好奇），轻轻弹出再飘走 —— */
+function drawEmote(g){
+  if(!emote.text) return;
+  const t = emote.t, life = emote.life;
+  const pop = t < 140 ? easeOutBack(Math.max(0, t / 140)) : 1;
+  const alpha = t > life - 260 ? Math.max(0, (life - t) / 260) : 1;
+  const x = clamp(bird.x + 26, 40, W - 40);
+  const y = Math.max(28, bird.y - bird.hop - 72 + Math.sin(performance.now() * 0.006) * 2.5);
+  g.save();
+  g.globalAlpha = alpha;
+  g.translate(x, y);
+  g.scale(pop, pop);
+  g.rotate(Math.sin(t * 0.008) * 0.1);
+  g.font = '700 17px "PingFang SC","Microsoft YaHei",sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.lineJoin = 'round';
+  g.lineWidth = 4;
+  g.strokeStyle = 'rgba(255,253,248,.95)';
+  g.strokeText(emote.text, 0, 0);
+  g.fillStyle = emote.text === '!' ? '#dd8757' : '#93aac9';
+  g.fillText(emote.text, 0, 0);
+  g.restore();
+}
+
+/* ============================================================
+ * ⑤ 交互逻辑：小手跟随、小鸟躲避、0.3% 彩蛋、状态机
+ * ============================================================ */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp  = (a, b, t) => a + (b - a) * t;
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const easeInOut    = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const easeOutBack  = t => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+
+// —— 唯一小手：跟随指针慵懒滑动；无操作时静静浮在笼侧 ——
+function updateHand(dt, time){
+  const k = 1 - Math.exp(-CONFIG.handLerpSpeed * dt);
+  if(pointer.active && state !== 'GONE'){
+    hand.tx = pointer.x - 14;
+    hand.ty = pointer.y + 16;
+  }else{
+    // 静息位置：鸟笼右外侧，随呼吸轻轻起伏
+    hand.tx = cage.cx + cage.halfW + 80;
+    hand.ty = cage.perchY - 10 + Math.sin(time * 1.5) * 5;
+  }
+  const oldX = hand.x;
+  hand.x = lerp(hand.x, hand.tx, k);
+  hand.y = lerp(hand.y, hand.ty, k);
+  // 根据移动速度微微倾斜小手
+  const targetRot = clamp((hand.x - oldX) * 0.03, -0.26, 0.26);
+  hand.rot = lerp(hand.rot, targetRot, 0.12);
+  // 手心始终朝向小鸟
+  hand.face = hand.x < bird.x ? 1 : -1;
+  // 小鸟飞走后小手温柔淡出
+  const targetAlpha = (state === 'FLY' || state === 'GONE') ? 0 : 1;
+  hand.alpha = lerp(hand.alpha, targetAlpha, 1 - Math.exp(-3 * dt));
+}
+
+// —— 正常状态：感知手的位置，蹦跳着向反方向躲避，动作细节丰富 ——
+function updateNormal(dt, now, time){
+  // —— 手的逼近 ——
+  const dx = bird.x - hand.x;
+  const dy = bird.y - 30 - hand.y;
+  const d = Math.hypot(dx, dy);
+  const aware = d < CONFIG.awareDist;
+  let push = 0;
+  if(aware){
+    const f = 1 - d / CONFIG.awareDist;
+    // 离得越近推力越大；手在左把小鸟推向右，手在右则推向左
+    push = (dx / Math.max(d, 1)) * f * f * 95;
+  }
+
+  // 紧张度（影响眼睛睁大、呆毛竖起、炸毛、汗滴、微抖）
+  const fearTarget = d < CONFIG.fleeDist ? 1 - (d / CONFIG.fleeDist) * 0.35 : 0;
+  bird.fear = lerp(bird.fear, fearTarget, 1 - Math.exp(-6 * dt));
+
+  // 手突然逼近（紧张度快速爬升越过阈值）→ 吓一跳：原地垂直小跳，头顶弹出"!"
+  if(prevFear < 0.5 && bird.fear >= 0.5 && now - lastStartleAt > 1300){
+    lastStartleAt = now;
+    startleT = 0.34;
+    showEmote('!');
+    SFX.chirp();
+  }
+  prevFear = bird.fear;
+
+  // 只能在栖木（鸟笼内部）范围内移动，无法飞出笼子
+  const prevX = bird.x;
+  bird.tx = clamp(cage.cx + push, cage.cx - cage.perchHalf, cage.cx + cage.perchHalf);
+  bird.x  = lerp(bird.x, bird.tx, 1 - Math.exp(-CONFIG.birdSpeed * dt));
+  bird.vx = lerp(bird.vx, (bird.x - prevX) / Math.max(dt, 1e-4), 0.35);
+  const speed = Math.abs(bird.vx);
+  const lift01 = clamp(speed / 150, 0, 1); // 0~1 逃命强度
+
+  // 头部转向靠近的手；无人靠近时偶尔东张西望
+  bird.lookT -= dt;
+  if(aware){
+    bird.face = hand.x < bird.x ? -1 : 1;
+    bird.lookT = 1.2 + Math.random() * 2;
+  }else if(bird.lookT <= 0){
+    bird.face *= -1;
+    bird.lookT = 2.4 + Math.random() * 3.2;
+    bird.ruffle = 1; // 顺便整理一下羽毛
+    if(Math.random() < 0.45) showEmote('?', 1100); // 好奇地歪头想想
+  }
+
+  // —— 蹦跳前进：水平越快蹦得越高，节拍随速度加快 ——
+  bird.hopPhase += dt * (5.5 + speed * 0.055);
+  const airborne = lift01 > 0.12;
+  const hopTarget = airborne ? Math.abs(Math.sin(bird.hopPhase)) * 11 * lift01 : 0;
+  bird.hop = lerp(bird.hop, hopTarget, airborne ? 0.5 : 0.35);
+  // 惊跳的垂直小跳（叠加在躲避蹦跳之上）
+  if(startleT > 0){
+    startleT -= dt;
+    bird.hop += Math.sin((1 - startleT / 0.34) * Math.PI) * 15;
+  }
+
+  // 离地 → 落地的瞬间，触发一次压扁回弹
+  if(bird.hop > 3) bird._wasAir = true;
+  if(bird._wasAir && bird.hop < 1.5){ bird._wasAir = false; bird.landT = 0.22; spawnDust(1); }
+  bird.landT = Math.max(0, bird.landT - dt);
+
+  // 挤压拉伸：空中拉长、落地压扁、平时轻轻呼吸
+  let sxT = 1, syT = 1;
+  if(bird.landT > 0){
+    const k = bird.landT / 0.22;
+    sxT = 1 + 0.16 * k; syT = 1 - 0.10 * k;
+  }else if(airborne){
+    sxT = 1 - 0.05 * lift01; syT = 1 + 0.10 * lift01;
+  }else{
+    const br = Math.sin(time * 2) * 0.012;
+    sxT = 1 - br; syT = 1 + br;
+  }
+  bird.sx = lerp(bird.sx, sxT, 0.3);
+  bird.sy = lerp(bird.sy, syT, 0.3);
+
+  // 扑翅：逃命时快速小扑棱；待机偶尔理毛
+  bird.flapPhase += dt * (7 + speed * 0.09);
+  bird.ruffle = Math.max(0, bird.ruffle - dt * 2.2);
+  bird.wing = Math.sin(bird.flapPhase) * (0.12 + lift01 * 0.55)
+            + Math.sin(time * 18) * 0.18 * bird.ruffle;
+
+  // 身体顺着逃跑方向倾斜，停下时回正
+  bird.tilt = lerp(bird.tilt, clamp(bird.vx * 0.0035, -0.3, 0.3), 0.18);
+  // 小脑袋慢半拍（身体先窜，头后跟上）
+  bird.headLag = lerp(bird.headLag, clamp(-bird.vx * 0.03, -5, 5), 0.15);
+  // 炸毛缩脖 / 尾巴张合摆动 / 胆怯微抖
+  bird.puff = lerp(bird.puff, bird.fear * 0.85, 1 - Math.exp(-5 * dt));
+  bird.tail = lerp(bird.tail,
+    clamp(-bird.vx * 0.012, -0.5, 0.5) + Math.sin(time * 3) * (0.05 + bird.fear * 0.08), 0.2);
+  bird.tremble = bird.fear > 0.08 ? Math.sin(now * 0.05) * 1.4 * bird.fear : 0;
+  bird.bob = airborne ? 0 : Math.sin(time * 2) * 1.3;
+
+  // 蹦得飞快时，身后拖出几道浅浅的速度线
+  dashFx -= dt;
+  if(speed > 150 && dashFx <= 0){
+    dashFx = 0.1;
+    spawnParticle('dash', bird.x - Math.sign(bird.vx) * 26, bird.y - 14 - Math.random() * 14);
+  }
+
+  // 很紧张时，每隔一会儿冒出一滴软萌小汗滴，随后淡去
+  bird.sweatT += dt;
+  if(bird.fear > 0.6 && bird.sweatT > 1.7){ bird.sweat = 1; bird.sweatT = 0; }
+  bird.sweat = Math.max(0, bird.sweat - dt * 0.7);
+
+  // 周期眨眼
+  if(now > bird.blinkAt){
+    const bp = (now - bird.blinkAt) / 130;
+    bird.blink = bp < 1 ? Math.sin(bp * Math.PI) : 0;
+    if(bp >= 1){ bird.blink = 0; bird.blinkAt = now + 2000 + Math.random() * 2800; }
+  }
+
+  // —— 每"更换一次躲闪方向"：啾一声 + 8%碎碎念 + 0.3%彩蛋 ——
+  // 高速(>dodgeDirSpeed)时认定当前方向；低速(<其45%)时才算停下（迟滞防抖）
+  const dirNow = speed > CONFIG.dodgeDirSpeed ? Math.sign(bird.vx)
+              : speed < CONFIG.dodgeDirSpeed * 0.45 ? 0 : boutDir;
+  if(dirNow !== 0){
+    if(boutDir !== dirNow && dirNow !== lastBoutDir && now - lastRollAt > CONFIG.rollCooldown){
+      lastBoutDir = dirNow;
+      lastRollAt = now;
+      SFX.chirp();            // 可爱的躲闪叫声
+      bird.talk = 1;          // 叫的时候小嘴张开
+      spawnDust(2);           // 蹬地扬起一点小尘土
+      maybeShowBubble();      // 8% 概率冒出一句碎碎念
+      if(Math.random() < CONFIG.eggProbability){ startEgg(); return; }
+    }
+    boutDir = dirNow;
+  }else{
+    boutDir = 0; // 停下后允许检测下一轮；但 lastBoutDir 不重置，同方向不重复抽奖
+  }
+}
+
+// 8% 概率让小鸟冒出对话小气泡
+function maybeShowBubble(){
+  if(Math.random() >= CONFIG.bubbleChance) return;
+  const text = CONFIG.phrases[Math.floor(Math.random() * CONFIG.phrases.length)];
+  bubble.text = text;
+  bubble.t = 0;
+  bubble.life = CONFIG.bubbleLife;
+  bird.talk = 1;
+  SFX.pop();
+}
+// 立即显示一句指定台词（彩蛋告别用）
+function sayNow(text, life){
+  bubble.text = text; bubble.t = 0; bubble.life = life || 2400;
+}
+
+// —— 彩蛋：停止躲闪 → 啄卡扣 → 推门 → 振翅飞走 ——
+// 彩蛋序列的音效 / 粒子节拍
+let peckPlayed = [false, false, false];
+let doorSounded = false, flySounded = false, chimeSounded = false;
+let fxNote = 0, fxStreak = 0, fxSpark = 0;
+
+function startEgg(){
+  state = 'PECK'; stateT = 0;
+  latchT = 0; doorAngle = 0;
+  bird.peck = 0; bird.hop = 0; bird.fear = 0;
+  bird.tremble = 0; bird.wing = 0; bird.bob = 0;
+  // 收起逃命时的夸张姿态，恢复软萌站姿再走向笼门
+  bird.vx = 0; bird.sx = 1; bird.sy = 1; bird.landT = 0; bird._wasAir = false;
+  bird.headLag = 0; bird.puff = 0; bird.tail = 0; bird.sweat = 0; bird.ruffle = 0;
+  boutDir = 0;
+  bubble.text = ''; bubble.alpha = 0;   // 收起碎碎念，专心越狱
+  emote.text = ''; startleT = 0; prevFear = 0; bird.talk = 0;
+  particles.length = 0;
+  peckPlayed = [false, false, false];
+  doorSounded = flySounded = chimeSounded = false;
+  fxNote = fxStreak = fxSpark = 0;
+}
+
+function setState(s){ state = s; stateT = 0; }
+
+function updateEgg(dt, time){
+  stateT += dt;
+  const t = stateT;
+
+  // 啄卡扣 / 开门阶段：逃命姿态平滑收回
+  if(state === 'PECK' || state === 'DOOR'){
+    bird.sx = lerp(bird.sx, 1, .2); bird.sy = lerp(bird.sy, 1, .2);
+    bird.puff = lerp(bird.puff, 0, .2); bird.headLag = lerp(bird.headLag, 0, .2);
+    bird.tail = lerp(bird.tail, 0, .2); bird.tremble = 0; bird.vx = 0;
+  }
+
+  if(state === 'PECK'){
+    bird.bob = 0;
+    // 小鸟跳到笼门卡扣旁
+    bird.tx = cage.latchX - 6;
+    bird.x  = lerp(bird.x, bird.tx, 1 - Math.exp(-6 * dt));
+    bird.face = 1;
+    bird.tilt = lerp(bird.tilt, 0, 0.2);
+    // 三次啄击节奏（低头 + 小跳）；每次落嘴配一声"笃"
+    const beats = [[0.25, 0.20], [0.62, 0.20], [1.00, 0.24]];
+    let pulse = 0;
+    beats.forEach(function(b, i){
+      if(t >= b[0] && t < b[0] + b[1]){
+        pulse = Math.max(pulse, Math.sin((t - b[0]) / b[1] * Math.PI));
+      }
+      if(t >= b[0] && !peckPlayed[i]){ peckPlayed[i] = true; SFX.peck(); }
+    });
+    bird.peck = pulse;
+    bird.hop  = pulse * 7;
+    if(t > 1.32) latchT = Math.min(1, (t - 1.32) / 0.25); // 卡扣脱落
+    if(t > 1.62) setState('DOOR');
+  }
+  else if(state === 'DOOR'){
+    if(!doorSounded){ doorSounded = true; SFX.creak(); } // 门轴轻响
+    bird.peck = 0; bird.hop = 0;
+    bird.bob  = Math.sin(time * 2) * 1.3;
+    const p = clamp(t / 1.05, 0, 1);
+    doorAngle = easeOutCubic(p); // 0→1：笼门向外推开（侧视透视）
+    if(p >= 1){ bird.fx0 = bird.x; setState('FLY'); }
+  }
+  else if(state === 'FLY'){
+    if(!flySounded){
+      flySounded = true;
+      SFX.warble();                       // 振翅欢鸣
+      sayNow('再见啦，谢谢你♪', 2200);   // 告别小气泡
+    }
+    bird.bob = 0;
+    bird.puff = 0; bird.headLag = 0; bird.tail = 0;
+    const p = clamp(t / 2.8, 0, 1);
+    const dcx = (cage.doorX0 + cage.doorX1) / 2;
+    bird.wing = Math.sin(t * 24) * 0.95; // 快速扑棱翅膀
+    if(p < 0.20){
+      // 先振翅穿过笼门
+      const k = easeInOut(p / 0.20);
+      bird.x = lerp(bird.fx0, dcx - 2, k);
+      bird.y = lerp(cage.perchY, cage.doorTop + 10, k);
+    }else{
+      // 划出一道温柔的弧线，朝画面右上方远去
+      const k = (p - 0.20) / 0.80;
+      bird.y = cage.doorTop + 10 - k * (cage.doorTop + 80);
+      bird.x = dcx - 2 + k * (W * 0.62 - dcx) + Math.sin(k * Math.PI) * 26;
+      bird.tilt = lerp(bird.tilt, -0.42, 0.08);
+    }
+    bird.scale = p < 0.32 ? 1 : 1 - 0.66 * clamp((p - 0.32) / 0.68, 0, 1);
+    bird.alpha = p < 0.85 ? 1 : clamp(1 - (p - 0.85) / 0.15, 0, 1);
+
+    // —— 飞行拖尾：光点闪烁、音符跳动、速度线（利落不拖沓）——
+    fxNote -= dt; fxStreak -= dt; fxSpark -= dt;
+    if(fxNote <= 0 && p > 0.2){ fxNote = 0.62; spawnParticle('note', bird.x - 6, bird.y - 34); }
+    if(fxStreak <= 0 && p > 0.2){ fxStreak = 0.09; spawnParticle('streak', bird.x - 14, bird.y - 22); }
+    if(fxSpark <= 0){ fxSpark = 0.2; spawnParticle('spark', bird.x, bird.y - 26); }
+
+    if(p >= 1) setState('GONE');
+  }
+  else if(state === 'GONE'){
+    bird.alpha = 0;                 // 画布只剩空鸟笼
+    if(!chimeSounded){
+      chimeSounded = true;
+      SFX.chime();                  // 自由的风铃音
+      for(let i = 0; i < 14; i++){ // 门口一小簇光点
+        spawnParticle('spark', (cage.doorX0 + cage.doorX1) / 2 + (Math.random()-.5)*30,
+                      (cage.doorTop + cage.doorBottom) / 2 + (Math.random()-.5)*40);
+      }
+    }
+    msgEl.classList.add('show');    // 浮现温柔提示
+  }
+}
+
+// —— 每帧更新 ——
+function update(dt, now, time){
+  updateHand(dt, time);
+  if(state === 'NORMAL'){
+    updateNormal(dt, now, time);
+  }else{
+    updateEgg(dt, time); // 彩蛋期间全部躲避交互锁定
+  }
+
+  // 对话气泡生命周期：快速淡入，停留，最后淡出
+  if(bubble.text){
+    bubble.t += dt * 1000;
+    const FADE_IN = 160, FADE_OUT = 420;
+    if(bubble.t < FADE_IN) bubble.alpha = bubble.t / FADE_IN;
+    else if(bubble.t > bubble.life - FADE_OUT) bubble.alpha = Math.max(0, (bubble.life - bubble.t) / FADE_OUT);
+    else bubble.alpha = 1;
+    if(bubble.t >= bubble.life){ bubble.text = ''; bubble.alpha = 0; }
+  }
+
+  // 情绪符号生命周期
+  if(emote.text){
+    emote.t += dt * 1000;
+    if(emote.t >= emote.life) emote.text = '';
+  }
+
+  // 说话/啾叫时小嘴一张一合；平时慢慢合上
+  if(bubble.text && bubble.alpha > 0.4){
+    bird.talk = 0.25 + Math.max(0, Math.sin(now * 0.013)) * 0.65;
+  }else{
+    bird.talk = Math.max(0, (bird.talk || 0) - dt * 2.4);
+  }
+}
+
+/* ============================================================
+ * ⑥ 输入与启动（鼠标 / 手指统一为 Pointer 事件）
+ * ============================================================ */
+function setPointer(e){
+  if(!started) return; // 未通过新手指引前，画面只做温柔预览，不响应操作
+  const r = canvas.getBoundingClientRect();
+  pointer.x = e.clientX - r.left;
+  pointer.y = e.clientY - r.top;
+  pointer.active = true;
+}
+canvas.addEventListener('pointermove', setPointer, { passive:true });
+canvas.addEventListener('pointerdown', setPointer, { passive:true });
+canvas.addEventListener('pointerleave',  function(){ pointer.active = false; });
+canvas.addEventListener('pointercancel', function(){ pointer.active = false; });
+window.addEventListener('resize', resize);
+
+/* ============================================================
+ * ⑦ 声音：Web Audio 全合成（零外部资源）—— 温柔 BGM + 可爱音效
+ * ============================================================ */
+const SFX = (function(){
+  let actx = null, master = null, bgmBus = null;
+  let muted = false, bgmOn = false, schedTimer = null;
+  let nextStepTime = 0, step = 0;
+  const STEP = 0.36; // 每步秒数（八分音符，缓慢、催眠感）
+
+  function ensure(){
+    if(actx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    actx = new AC();
+    master = actx.createGain(); master.gain.value = muted ? 0 : 0.9;
+    master.connect(actx.destination);
+    bgmBus = actx.createGain(); bgmBus.gain.value = 0.55; bgmBus.connect(master);
+  }
+  function unlock(){
+    ensure();
+    if(actx.state === 'suspended') actx.resume();
+  }
+
+  // 单个柔化振荡器音符（指数包络，可选滑音/低通）
+  function blip(freq, t0, dur, opt){
+    opt = opt || {};
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = opt.type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if(opt.glide) o.frequency.exponentialRampToValueAtTime(Math.max(1, freq * opt.glide), t0 + dur);
+    const v = opt.vol == null ? 0.1 : opt.vol;
+    const a = opt.attack || 0.008, r = opt.release == null ? dur : opt.release;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(v, t0 + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + r);
+    let head = g;
+    if(opt.lp){
+      const f = actx.createBiquadFilter();
+      f.type = 'lowpass'; f.frequency.value = opt.lp;
+      head.connect(f); head = f;
+    }
+    head.connect(opt.bus || master);
+    o.connect(g);
+    o.start(t0); o.stop(t0 + dur + r + 0.05);
+  }
+
+  // —— 温柔循环 BGM：C 大调五声音阶小摇篮曲，三角波 + 低音铺底 ——
+  // 旋律（null 为休止）
+  const N = {E5:659.25, G5:783.99, A5:880.00, C6:1046.5, D5:587.33,
+             C5:523.25, B4:493.88, G4:392.00, A4:440.00, E4:329.63};
+  const MELODY = [N.E5,  null, N.G5,  N.E5,  null, N.A5,  N.G5,  null,
+                  N.E5,  null, N.D5,  N.E5,  N.G5,  null, null, null,
+                  N.A5,  null, N.G5,  N.E5,  null, N.D5,  N.C5,  null,
+                  N.B4,  N.D5, N.E5,  N.G5,  N.E5,  null, null, null];
+  const BASS = {0:130.81, 4:196.00, 8:220.00, 12:174.61,
+                16:130.81, 20:196.00, 24:220.00, 28:174.61}; // C-G-Am-F
+
+  function scheduleStep(s, t){
+    const m = MELODY[s % MELODY.length];
+    if(m) blip(m, t, STEP * 0.9, {type:'triangle', vol:0.055, lp:2600, release:0.28, bus:bgmBus});
+    if(BASS[s] != null) blip(BASS[s], t, STEP * 1.6, {type:'sine', vol:0.05, attack:0.03, release:0.6, bus:bgmBus});
+  }
+  function scheduler(){
+    while(nextStepTime < actx.currentTime + 0.25){
+      scheduleStep(step, nextStepTime);
+      nextStepTime += STEP;
+      step++;
+    }
+  }
+  function startBGM(){
+    unlock();
+    if(bgmOn) return;
+    bgmOn = true; step = 0;
+    nextStepTime = actx.currentTime + 0.12;
+    scheduler();
+    schedTimer = setInterval(scheduler, 90);
+  }
+
+  return {
+    unlock,
+    startBGM,
+    chirp: function(){           // 躲闪时的"啾～"
+      if(!actx) return; const t = actx.currentTime;
+      blip(920, t, 0.07, {glide:1.22, vol:0.10});
+      blip(1280, t + 0.07, 0.06, {glide:1.08, vol:0.075});
+    },
+    pop: function(){             // 气泡冒出来的"叮"
+      if(!actx) return;
+      blip(640, actx.currentTime, 0.12, {type:'triangle', glide:1.5, vol:0.085, lp:3200});
+    },
+    peck: function(){            // 啄卡扣的"笃"
+      if(!actx) return;
+      blip(250, actx.currentTime, 0.05, {type:'triangle', glide:0.62, vol:0.13, lp:1600});
+    },
+    creak: function(){           // 笼门推开的门轴声
+      if(!actx) return; const t = actx.currentTime;
+      blip(82, t, 0.55, {type:'sawtooth', glide:1.7, vol:0.030, lp:480});
+      blip(124, t + 0.05, 0.5, {type:'sawtooth', glide:1.5, vol:0.020, lp:600});
+    },
+    warble: function(){          // 自由的欢鸣
+      if(!actx) return; const t = actx.currentTime;
+      [660, 880, 990, 1320].forEach(function(f, i){
+        blip(f, t + i * 0.1, 0.11, {vol:0.09});
+      });
+    },
+    chime: function(){           // 飞远后的风铃
+      if(!actx) return; const t = actx.currentTime;
+      [1046.5, 1318.5, 1568.0, 2093.0].forEach(function(f, i){
+        blip(f, t + i * 0.11, 0.4, {vol:0.06, release:1.1});
+      });
+    },
+    ui: function(){              // 按钮 / 选中反馈
+      if(!actx) return;
+      blip(540, actx.currentTime, 0.07, {type:'triangle', glide:1.35, vol:0.07});
+    },
+    setMuted: function(m){
+      muted = m;
+      if(master){
+        const t = actx.currentTime;
+        master.gain.cancelScheduledValues(t);
+        master.gain.setValueAtTime(master.gain.value, t);
+        master.gain.linearRampToValueAtTime(m ? 0 : 0.9, t + 0.15);
+      }
+    },
+    isMuted: function(){ return muted; }
+  };
+})();
+
+/* ============================================================
+ * ⑧ 角色 / 皮肤选择：动态生成卡片，复用 drawBirdAt 画实时预览
+ * ============================================================ */
+const previews = []; // {cv, g, w, h, anchorY, scale, kind:'char'|'skin', seed}
+
+// 预览用的静态小鸟姿态（呼吸、轻摆尾、眨眼）
+function previewOptions(pal, feat, skinType, cx, anchorY, s, time, seed){
+  const blinkPhase = time * 0.85 + seed * 1.7;
+  const blink = Math.pow(Math.max(0, Math.sin(blinkPhase)), 38);
+  return {
+    x:cx, y:anchorY, s:s, face:1,
+    tilt:0, fear:0, wing:Math.sin(time * 2 + seed) * 0.05, peck:0,
+    hop:0, bob:Math.sin(time * 2.1 + seed * 1.3) * 1.2,
+    sx:1, sy:1, tremble:0, puff:0,
+    tail:Math.sin(time * 1.6 + seed) * 0.06, sweat:0, headLag:0,
+    alpha:1, blink:blink, pal:pal, feat:feat, skinType:skinType
+  };
+}
+
+function setupPreviewCanvas(cv, scale, anchorY, kind, seed){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = cv.clientWidth || 120, h = cv.clientHeight || 92;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const p = {cv:cv, g:g, w:w, h:h, scale:scale, anchorY:anchorY, kind:kind, seed:seed};
+  previews.push(p);
+  return p;
+}
+
+function renderPreviews(time){
+  previews.forEach(function(p){
+    const g = p.g;
+    g.clearRect(0, 0, p.w, p.h);
+    g.save();
+    // 脚下一小片柔和椭圆阴影
+    g.fillStyle = 'rgba(150,135,100,.10)';
+    g.beginPath();
+    g.ellipse(p.w / 2, p.anchorY + 7, 26 * p.scale, 5 * p.scale, 0, 0, Math.PI * 2);
+    g.fill();
+    g.translate(p.w / 2, p.anchorY);
+    let pal, feat, skinType;
+    if(p.kind === 'char'){
+      pal = p.char.pal; feat = p.char.feat; skinType = 'none';
+    }else{
+      // 皮肤预览实时跟随已选小鸟的颜色与特征
+      pal = selChar.pal; feat = selChar.feat; skinType = p.skin.type;
+    }
+    drawBirdAt(g, previewOptions(pal, feat, skinType, 0, 0, p.scale, time, p.seed));
+    g.restore();
+  });
+}
+
+function makePickItem(grid, data, kind, index){
+  const item = document.createElement('div');
+  item.className = 'pick-item';
+  const cv = document.createElement('canvas');
+  const name = document.createElement('div');
+  name.className = 'pick-name'; name.textContent = data.name;
+  item.appendChild(cv);
+  item.appendChild(name);
+  if(data.tag){
+    const tag = document.createElement('div');
+    tag.className = 'pick-tag'; tag.textContent = data.tag;
+    item.appendChild(tag);
+  }
+  const dot = document.createElement('div');
+  dot.className = 'sel-dot';
+  item.appendChild(dot);
+  grid.appendChild(item);
+
+  // 缩放与锚点经过校准：呆毛/帽子最高处和脚底都不被裁剪，完整呈现
+  const s = kind === 'char' ? 1.0 : 0.92;
+  const anchorY = kind === 'char' ? 70 : 70;
+  const p = setupPreviewCanvas(cv, s, anchorY, kind, index + 1);
+  if(kind === 'char') p.char = data; else p.skin = data;
+
+  item.addEventListener('click', function(){
+    SFX.unlock(); SFX.ui();
+    grid.querySelectorAll('.pick-item').forEach(function(el){ el.classList.remove('sel'); });
+    item.classList.add('sel');
+    if(kind === 'char'){
+      selChar = data;
+      charNextBtn.disabled = false;
+    }else{
+      selSkin = data;
+      beginBtn.disabled = false;
+    }
+  });
+  return item;
+}
+
+// —— 页面流转：新手指引 → 选角色 → 选皮肤 → 开始相遇 ——
+const guideEl     = document.getElementById('guide');
+const charSheetEl = document.getElementById('charSheet');
+const skinSheetEl = document.getElementById('skinSheet');
+const charGridEl  = document.getElementById('charGrid');
+const skinGridEl  = document.getElementById('skinGrid');
+const charNextBtn = document.getElementById('charNext');
+const skinBackBtn = document.getElementById('skinBack');
+const beginBtn    = document.getElementById('beginBtn');
+const muteBtn     = document.getElementById('muteBtn');
+const iconSound   = document.getElementById('iconSound');
+const iconMute    = document.getElementById('iconMute');
+
+CHARACTERS.forEach(function(ch, i){ makePickItem(charGridEl, ch, 'char', i); });
+SKINS.forEach(function(sk, i){ makePickItem(skinGridEl, sk, 'skin', i); });
+// 默认选中第一项（按钮也随之可点，玩家也可直接下一步）
+charGridEl.firstChild.classList.add('sel');
+skinGridEl.firstChild.classList.add('sel');
+charNextBtn.disabled = false;
+beginBtn.disabled = false;
+
+document.getElementById('guideBtn').addEventListener('click', function(){
+  SFX.unlock(); SFX.ui();
+  guideEl.classList.add('hide');
+  charSheetEl.classList.remove('hide');
+});
+charNextBtn.addEventListener('click', function(){
+  SFX.ui();
+  charSheetEl.classList.add('hide');
+  skinSheetEl.classList.remove('hide');
+});
+skinBackBtn.addEventListener('click', function(){
+  SFX.ui();
+  skinSheetEl.classList.add('hide');
+  charSheetEl.classList.remove('hide');
+});
+beginBtn.addEventListener('click', function(){
+  SFX.unlock(); SFX.ui(); SFX.startBGM();   // 浏览器要求用户手势后才能放声
+  skinSheetEl.classList.add('hide');
+  started = true;
+});
+
+// —— 静音开关 ——
+muteBtn.addEventListener('click', function(){
+  SFX.unlock();
+  const m = !SFX.isMuted();
+  SFX.setMuted(m);
+  iconSound.style.display = m ? 'none' : '';
+  iconMute.style.display = m ? '' : 'none';
+});
+
+// 窗口尺寸变化时，预览小画布按新 CSS 尺寸重建
+window.addEventListener('resize', function(){
+  previews.forEach(function(p){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    p.w = p.cv.clientWidth || 120; p.h = p.cv.clientHeight || 92;
+    p.cv.width = Math.round(p.w * dpr);
+    p.cv.height = Math.round(p.h * dpr);
+    p.g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  });
+});
+
+let lastTime = performance.now();
+function frame(now){
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+  const time = now / 1000;
+  update(dt, now, time);
+  render(time, dt);
+  renderPreviews(time);
+  requestAnimationFrame(frame);
+}
+
+resize();                  // 初始化布局与鸟笼
+requestAnimationFrame(frame);
+
+</script>
+
+<script>
+'use strict';
+/* ============================================================
+ * 游戏2：海星翻翻身（独立模块，不影响其它游戏）
+ * 玩法：从左侧小水箱拿起倒扣的海星，放到右侧大水盆里，
+ *       海星会慢悠悠地自己翻身；底部滑块可全局调倍速。
+ * ============================================================ */
+(function(){
+  /* ---------- ① 可调参数 ---------- */
+  const CFG = {
+    tankCount   : 4,       // 左侧小水箱常备海星数量
+    refillDelay : 1.4,     // 拿走一只后，水箱补货间隔（秒）
+    waitMin     : 0.5,     // 入水后到开始翻身的最短等待（秒）
+    waitMax     : 1.6,     // 入水后到开始翻身的最长等待（秒）
+    bg          : '#faf7f1',
+    sand        : '#f3ead9',
+    tankBody    : '#eef4f2',
+    tankEdge    : '#cfe0da',
+    water       : '#d8ecec',
+    waterHi     : '#e8f5f4',
+    pals : [              // 海星配色（主色 / 深色 / 腮红）
+      ['#f2b3ae','#e2938f','#f7d2cd'],
+      ['#f4c9a4','#e2a97e','#fadcc3'],
+      ['#d9c5e8','#bfa6d6','#eadff3'],
+      ['#bcd9c8','#98c1ab','#d7ebdf'],
+      ['#f3d9a6','#e0bd7c','#f9e9c8'],
+    ],
+    ink : '#57514d',
+  };
+
+  const cv  = document.getElementById('cvStar');
+  const g   = cv.getContext('2d');
+  const sec = document.getElementById('game-star');
+
+  let W=0, H=0, DPR=1;
+  let tank=[], bowl=[], ripples=[], held=null;
+  let speedMul=1, refillT=0;
+  let active=false, raf=0, last=0, time=0;
+  const pointer={x:-999,y:-999,down:false};
+
+  /* 水箱 / 水盆的屏幕位置（自适应） */
+  const tankPos={x:0,y:0,r:0}, bowlPos={cx:0,cy:0,r:0};
+  function layout(){
+    const m=Math.min(W,H);
+    tankPos.x=W*0.17; tankPos.y=H*0.36; tankPos.r=m*0.135;
+    bowlPos.cx=W*0.62; bowlPos.cy=H*0.52; bowlPos.r=Math.min(W*0.31,H*0.36);
+  }
+  function resize(){
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    W=sec.clientWidth; H=sec.clientHeight;
+    cv.width=W*DPR; cv.height=H*DPR;
+    g.setTransform(DPR,0,0,DPR,0,0);
+    layout();
+  }
+
+  /* ---------- ② 海星 ---------- */
+  function makeStar(x,y){
+    const pal=CFG.pals[(Math.random()*CFG.pals.length)|0];
+    return {
+      x,y, pal,
+      R: 24+Math.random()*9,                  // 体型随机
+      rot:(Math.random()*0.7-0.35),
+      upside:true,                            // 出生即倒扣（等待救援）
+      flip:-1, flipT:0,                       // 翻身进度
+      flipDur: 2.4+Math.random()*2.2,         // 每只翻身速度随机
+      wait: 0,                                // 入水后的缓冲
+      squash:0, lift:0, alpha:1, fading:false,
+      landed:false, wobble:Math.random()*7,
+      blink:2+Math.random()*3,
+    };
+  }
+  function fillTank(){
+    tank.length=0;
+    for(let i=0;i<CFG.tankCount;i++) tank.push(makeStar(0,0));
+    placeTank();
+  }
+  function placeTank(){
+    const off=tankPos.r*0.42;
+    tank.forEach((s,i)=>{
+      s.x=tankPos.x+((i%2)?off:-off);
+      s.y=tankPos.y+((i<2)?-off*0.9:off*0.9);
+    });
+  }
+  /* 圆润五角星路径：顶点直线 + 同色粗描边 */
+  function starPath(R){
+    g.beginPath();
+    for(let i=0;i<10;i++){
+      const a=-Math.PI/2+i*Math.PI/5;
+      const r=(i%2===0)?R:R*0.55;
+      const px=Math.cos(a)*r, py=Math.sin(a)*r;
+      i?g.lineTo(px,py):g.moveTo(px,py);
+    }
+    g.closePath();
+  }
+  const easeIO=t=>t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+
+  function drawStar(s,small){
+    const R=(small?s.R*0.78:s.R);
+    g.save();
+    g.translate(s.x, s.y - s.lift);
+    g.rotate(s.rot);
+    const wob=Math.sin(time*2.1+s.wobble)*0.03;
+    g.scale((s.squash>0?1+s.squash*0.5:1)*(1+wob),
+            (s.squash>0?1-s.squash:1)*(1-wob));
+    g.globalAlpha=s.alpha;
+    if(s.fading) g.globalAlpha=s.alpha;
+
+    /* 翻身中：像一片纸被翻过来——横向压扁成一条线再展开，形态始终是五角星 */
+    let faceUp=!s.upside;                             /* 当前画正面还是背面 */
+    if(s.flip>=0){
+      const t=Math.min(s.flipT/s.flipDur,1);
+      const sx=Math.cos(Math.PI*easeIO(t));           /* 1 → 0 → -1 */
+      g.scale(sx,1);                                  /* 负值即镜像，纸的反面 */
+      faceUp=t>=0.5;                                  /* 翻过中线后露出正面 */
+    }
+
+    if(!faceUp){                                      /* ---- 背面（倒扣） ---- */
+      starPath(R);
+      g.fillStyle=s.pal[0]; g.strokeStyle=s.pal[0];
+      g.lineWidth=R*0.5; g.lineJoin='round';
+      g.stroke(); g.fill();
+      g.fillStyle=s.pal[1];                           /* 背面小斑点 */
+      for(let i=0;i<5;i++){
+        const a=-Math.PI/2+i*Math.PI*2/5;
+        g.beginPath(); g.arc(Math.cos(a)*R*0.34,Math.sin(a)*R*0.34,R*0.08,0,7); g.fill();
+      }
+    }else{                                            /* ---- 正面（有脸） ---- */
+      starPath(R);
+      g.fillStyle=s.pal[0]; g.strokeStyle=s.pal[0];
+      g.lineWidth=R*0.5; g.lineJoin='round';
+      g.stroke(); g.fill();
+      /* 眼睛（会眨） */
+      const er=Math.max(1.6,R*0.085);
+      const closed=s.blink<0.12;
+      g.fillStyle=CFG.ink;
+      [[-R*0.26,-R*0.04],[R*0.26,-R*0.04]].forEach(p=>{
+        if(closed){ g.fillRect(p[0]-er,p[1],er*2,er*0.5); }
+        else{ g.beginPath(); g.arc(p[0],p[1],er,0,7); g.fill(); }
+      });
+      /* 腮红 + 微笑 */
+      g.fillStyle=s.pal[2];
+      g.beginPath(); g.arc(-R*0.36,R*0.12,R*0.12,0,7); g.fill();
+      g.beginPath(); g.arc( R*0.36,R*0.12,R*0.12,0,7); g.fill();
+      g.strokeStyle=CFG.ink; g.lineWidth=R*0.055; g.lineCap='round';
+      g.beginPath(); g.arc(0,R*0.12,R*0.14,0.25,Math.PI-0.25); g.stroke();
+    }
+    g.restore();
+  }
+
+  /* ---------- ③ 更新 ---------- */
+  function update(dt){
+    time+=dt;
+    /* 水箱补货 */
+    if(tank.length<CFG.tankCount){
+      refillT+=dt;
+      if(refillT>=CFG.refillDelay){ refillT=0; tank.push(makeStar(0,0)); placeTank(); }
+    }else refillT=0;
+    placeTank();
+
+    /* 盆里的海星：等待 → 翻身 → 呼吸/眨眼 */
+    for(let i=bowl.length-1;i>=0;i--){
+      const s=bowl[i];
+      if(s.fading){ s.alpha-=dt*0.9; if(s.alpha<=0){bowl.splice(i,1);continue;} }
+      s.blink-=dt; if(s.blink<-0.12) s.blink=2.5+Math.random()*3.5;
+      if(s.flip<0){
+        if(s.upside){
+          s.wait-=dt*speedMul;
+          if(s.wait<=0){ s.flip=0; s.landed=false; }
+        }
+      }else{
+        /* 纸片式翻身：轻轻弹起 → 横向压扁成一条线 → 再展开成正面 */
+        s.flipT+=dt*speedMul;
+        const t=Math.min(s.flipT/s.flipDur,1);
+        s.lift=Math.sin(t*Math.PI)*s.R*1.2;                     /* 先离水后落下 */
+        if(t<0.12) s.squash=0.18*Math.sin(t/0.12*Math.PI);      /* 起跳小压扁 */
+        else s.squash=0;
+        if(t>=1){                                                /* 翻完落地 */
+          s.flip=-1; s.flipT=0; s.lift=0; s.squash=0; s.upside=false;
+          ripples.push({x:s.x,y:s.y,r:s.R*0.5,a:0.4});
+          const T=window.Tone; T&&T.blub();
+        }
+      }
+    }
+    /* 涟漪扩散 */
+    for(let i=ripples.length-1;i>=0;i--){
+      const r=ripples[i]; r.r+=dt*70; r.a-=dt*0.55;
+      if(r.a<=0) ripples.splice(i,1);
+    }
+  }
+
+  /* ---------- ④ 绘制 ---------- */
+  function drawBowl(){
+    const {cx,cy,r}=bowlPos;
+    /* 盆影 + 盆沿 */
+    g.fillStyle='rgba(190,180,155,.14)';
+    g.beginPath(); g.ellipse(cx,cy+r*0.14,r*1.06,r*0.98,0,0,7); g.fill();
+    g.fillStyle=CFG.tankBody; g.strokeStyle=CFG.tankEdge; g.lineWidth=5;
+    g.beginPath(); g.arc(cx,cy,r,0,7); g.fill(); g.stroke();
+    g.fillStyle=CFG.tankEdge;
+    g.beginPath(); g.arc(cx,cy,r,0,7); g.stroke();
+    /* 水面 */
+    g.save();
+    g.beginPath(); g.arc(cx,cy,r-7,0,7); g.clip();
+    const wg=g.createLinearGradient(cx,cy-r,cy+r,cy+r);
+    wg.addColorStop(0,CFG.waterHi); wg.addColorStop(1,CFG.water);
+    g.fillStyle=wg; g.fillRect(cx-r,cy-r,r*2,r*2);
+    /* 水波细弧 */
+    g.strokeStyle='rgba(255,255,255,.5)'; g.lineWidth=2; g.lineCap='round';
+    for(let i=0;i<3;i++){
+      const yy=cy-r*0.45+i*r*0.38+Math.sin(time*1.1+i*2)*4;
+      g.beginPath();
+      g.moveTo(cx-r*0.55,yy);
+      g.quadraticCurveTo(cx-r*0.2,yy-6,cx+r*0.05,yy);
+      g.quadraticCurveTo(cx+r*0.32,yy+6,cx+r*0.55,yy);
+      g.stroke();
+    }
+    g.restore();
+    g.strokeStyle=CFG.tankEdge; g.lineWidth=5;
+    g.beginPath(); g.arc(cx,cy,r,0,7); g.stroke();
+  }
+  function drawTank(){
+    const {x,y,r}=tankPos;
+    g.fillStyle='rgba(190,180,155,.14)';
+    g.beginPath(); g.ellipse(x,y+r*0.16,r*1.05,r*0.95,0,0,7); g.fill();
+    g.fillStyle=CFG.tankBody; g.strokeStyle=CFG.tankEdge; g.lineWidth=4;
+    g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+    g.save(); g.beginPath(); g.arc(x,y,r-5,0,7); g.clip();
+    g.fillStyle=CFG.water; g.fillRect(x-r,y-r,r*2,r*2);
+    g.fillStyle=CFG.waterHi; g.globalAlpha=0.6;
+    g.beginPath(); g.ellipse(x,y-r*0.25,r*0.62,r*0.4,0,0,7); g.fill();
+    g.restore(); g.globalAlpha=1;
+    g.strokeStyle=CFG.tankEdge; g.lineWidth=4;
+    g.beginPath(); g.arc(x,y,r,0,7); g.stroke();
+  }
+  /* 卡通手套小手（与参考图同款：白填充黑描边、四指并拢微张；抓握时整体收拢） */
+  function glovePath2(){
+    g.beginPath();
+    /* 手腕左下 → 拇指 */
+    g.moveTo(-12, 18);
+    g.quadraticCurveTo(-17, 16, -20, 11);
+    g.quadraticCurveTo(-26, 9, -26, 2);
+    g.quadraticCurveTo(-26, -5, -19, -5);
+    g.quadraticCurveTo(-14, -5, -12, -9);
+    /* 食指 */
+    g.quadraticCurveTo(-15, -13, -14, -18);
+    g.quadraticCurveTo(-13, -25, -7, -25);
+    g.quadraticCurveTo(-2, -25, -2, -18);
+    /* 中指（最长） */
+    g.quadraticCurveTo(-2, -27, 4, -27);
+    g.quadraticCurveTo(9, -27, 9, -18);
+    /* 无名指 */
+    g.quadraticCurveTo(10, -24, 15, -23);
+    g.quadraticCurveTo(19, -22, 18, -15);
+    /* 小指 */
+    g.quadraticCurveTo(22, -16, 24, -11);
+    g.quadraticCurveTo(26, -5, 20, -3);
+    /* 手掌右缘 → 手腕 */
+    g.quadraticCurveTo(19, 6, 13, 13);
+    g.quadraticCurveTo(6, 19, -2, 19);
+    g.quadraticCurveTo(-8, 19, -12, 18);
+    g.closePath();
+  }
+  function drawHand(x,y,grabbing){
+    g.save(); g.translate(x,y);
+    if(grabbing) g.scale(0.86,0.86);             /* 抓握时整体收拢一点 */
+    g.fillStyle='#fffdfb'; g.strokeStyle='#40373a';
+    g.lineWidth=3; g.lineJoin='round'; g.lineCap='round';
+    glovePath2(); g.fill(); g.stroke();
+    /* 两道指缝短弧线 */
+    g.lineWidth=2;
+    g.beginPath(); g.moveTo(-5,-16); g.quadraticCurveTo(-5.6,-11,-5,-5); g.stroke();
+    g.beginPath(); g.moveTo(6.5,-18); g.quadraticCurveTo(6.2,-12,6.8,-6); g.stroke();
+    g.restore();
+  }
+  function render(){
+    g.clearRect(0,0,W,H);
+    g.fillStyle=CFG.bg; g.fillRect(0,0,W,H);
+    /* 沙色地面提示 */
+    g.fillStyle=CFG.sand;
+    g.beginPath(); g.ellipse(W*0.5,H*1.06,W*0.75,H*0.22,0,0,7); g.fill();
+    drawBowl(); drawTank();
+    tank.forEach(s=>drawStar(s,true));
+    bowl.slice().sort((a,b)=>a.y-b.y).forEach(s=>drawStar(s,false));
+    /* 涟漪 */
+    g.strokeStyle='#ffffff'; g.lineWidth=2.5;
+    ripples.forEach(r=>{ g.globalAlpha=Math.max(r.a,0);
+      g.beginPath(); g.ellipse(r.x,r.y,r.r,r.r*0.55,0,0,7); g.stroke(); });
+    g.globalAlpha=1;
+    /* 手 + 提着的海星 */
+    if(pointer.x>-500){
+      if(held){
+        held.x=pointer.x; held.y=pointer.y+held.R+16;
+        drawStar(held,false);
+        drawHand(pointer.x,pointer.y,true);
+      }else drawHand(pointer.x,pointer.y,false);
+    }
+  }
+  function frame(now){
+    if(!active) return;
+    const dt=Math.min((now-last)/1000,0.05); last=now;
+    update(dt); render();
+    raf=requestAnimationFrame(frame);
+  }
+
+  /* ---------- ⑤ 交互 ---------- */
+  function pt(e){
+    const rc=cv.getBoundingClientRect();
+    return {x:e.clientX-rc.left, y:e.clientY-rc.top};
+  }
+  function pickTankStar(x,y){
+    for(let i=0;i<tank.length;i++){
+      const s=tank[i];
+      if(Math.hypot(x-s.x,y-s.y)<s.R*1.1) return i;
+    }
+    return -1;
+  }
+  cv.addEventListener('pointerdown',e=>{
+    pointer.x=pt(e).x; pointer.y=pt(e).y; pointer.down=true;
+    try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+    const i=pickTankStar(pointer.x,pointer.y);
+    if(i>=0){
+      held=tank.splice(i,1)[0];
+      const T=window.Tone; T&&T.swish();
+    }
+  });
+  cv.addEventListener('pointermove',e=>{
+    const p=pt(e); pointer.x=p.x; pointer.y=p.y;
+  });
+  function release(){
+    pointer.down=false;
+    if(!held) return;
+    const d=Math.hypot(pointer.x-bowlPos.cx,pointer.y-bowlPos.cy);
+    if(d<bowlPos.r*0.92){                       /* 放进水盆：开始新生活 */
+      held.x=pointer.x; held.y=Math.min(pointer.y+10,bowlPos.cy+bowlPos.r*0.5);
+      held.wait=CFG.waitMin+Math.random()*(CFG.waitMax-CFG.waitMin);
+      held.flip=-1; held.flipT=0; held.lift=0; held.squash=0; held.alpha=1;
+      bowl.push(held);   /* 大盆海星数量无上限，想放多少放多少 */
+      ripples.push({x:held.x,y:held.y,r:held.R*0.4,a:0.5});
+      const T=window.Tone; T&&T.plop();
+    }else{ tank.push(held); placeTank(); }      /* 没对准盆：轻轻放回水箱 */
+    held=null;
+  }
+  cv.addEventListener('pointerup',release);
+
+  /* 右上角「清空水盆」：大盆里的海星全部淡出，重新开始 */
+  document.getElementById('starClear').addEventListener('click',()=>{
+    if(held){ tank.push(held); placeTank(); held=null; }   /* 手里那只放回水箱 */
+    bowl.forEach(s=>{ s.fading=true; });
+    const T=window.Tone; T&&T.swish&&T.swish();
+  });
+  cv.addEventListener('pointercancel',release);
+
+  /* 倍速滑块（全局控制所有海星翻身快慢） */
+  const sl=document.getElementById('starSpeed');
+  const sv=document.getElementById('starSpeedVal');
+  sl.addEventListener('input',()=>{
+    speedMul=parseFloat(sl.value);
+    sv.textContent=(Math.round(speedMul*100)/100)+'x';
+  });
+
+  /* ---------- ⑥ 对外接口（外壳调用） ---------- */
+  window.StarGame={
+    enter(){
+      if(active) return; active=true;
+      cv.style.cursor='none';
+      resize();
+      if(!tank.length) fillTank();
+      last=performance.now();
+      raf=requestAnimationFrame(frame);
+    },
+    leave(){
+      active=false; cancelAnimationFrame(raf);
+      cv.style.cursor='';
+      if(held){ tank.push(held); held=null; placeTank(); }
+      pointer.x=-999; pointer.y=-999;
+    },
+  };
+})();
+</script>
+
+<script>
+'use strict';
+/* ============================================================
+ * 游戏3：乱跑小猪乐园（独立模块，不影响其它游戏）
+ * 玩法：小猪会自己从画面外跑进来；点住可抱起，松手放下。
+ *       性格是盲盒：暴躁的会挣扎挣脱跑掉，温顺的安静哼唧。
+ *       抱起后可点底部托盘给它们穿小衣服。
+ * ============================================================ */
+(function(){
+  /* ---------- ① 可调参数 ---------- */
+  const CFG = {
+    spawnMin    : 2.2,     // 出生间隔下限（秒）
+    spawnMax    : 4.5,     // 出生间隔上限（秒）
+    maxPigs     : 6,       // 画面上最多几只
+    walkMin     : 55,      // 散步速度下限(px/s)
+    walkMax     : 115,     // 散步速度上限
+    fleeSpeed   : 240,     // 挣脱逃跑速度
+    grumpyRate  : 0.45,    // 暴躁性格概率（其余为温顺）
+    escapeMin   : 2.6,     // 暴躁小猪最短坚持时间（秒）
+    escapeMax   : 4.8,     // 最长坚持时间
+    fallG       : 1400,    // 放下时重力
+    maxOutfits  : 2,       // 最多同时佩戴几件装饰
+    patBubbleRate: 0.35,    // 摸头后触发对话框的概率
+    patTexts    : ['哼哼~好舒服呀','再摸摸头嘛','最喜欢被摸啦','今天心情超棒','呼噜呼噜~'], // 摸头随机气泡文案
+    feedG       : 1500,    // 食物下落重力
+    foodR       : 13,      // 玉米圈半径
+    gatherSpeed : 190,     // 小猪聚拢速度(px/s)
+    eatDuration : 3.2,     // 进食时长（秒）
+    eatBubbleRate: 0.85,    // 每只进食小猪弹喜悦气泡的概率
+    eatTexts    : ['玉米圈好好吃！','吧唧吧唧~','太幸福啦','还要还要！','唔～好香脆'], // 进食喜悦气泡文案
+    bg          : '#faf7f1',
+    skyHi       : '#f9f4ea',
+    grass       : '#dce9d5',
+    grassDark   : '#c8ddbf',
+    ground      : '#e9f2e4',
+    fence       : '#ddc9a8',
+    fenceDark   : '#c9b28d',
+    ink         : '#57514d',
+    pals : [              // 小猪配色（主体 / 深 / 浅肚皮 / 腮红）
+      ['#f6c6c0','#e8a89f','#fde3de','#f2aca0'],
+      ['#f8d3b8','#eab994','#fdeadd','#f0bfa4'],
+      ['#e8c9e2','#d3a9cc','#f6e6f3','#e3aFd6'],
+    ],
+  };
+
+  const cv  = document.getElementById('cvPig');
+  const g   = cv.getContext('2d');
+  const sec = document.getElementById('game-pig');
+  const hint= document.getElementById('trayHint');
+  const tray= document.getElementById('pigClothes');
+  const dropBtn = document.getElementById('pigDrop');   /* 「放下它」按钮 */
+
+  /* 统一切换"抱着哪只"：同步按钮显示与托盘高亮 */
+  function setHeld(p){
+    heldPig = p;
+    dropBtn.classList.toggle('on', !!p);
+    syncTray();
+  }
+
+  let W=0,H=0,DPR=1;
+  let pigs=[], hearts=[], puffs=[], dusts=[];
+  let heldPig=null, spawnT=1.2, active=false, raf=0, last=0, time=0;
+  let carryMode=false;   /* 「抱起来」开关：开=点击抱起，关=点击摸头 */
+  let feedArmed=false;   /* 「投喂」待发状态：鼠标变成拿玉米圈的手 */
+  let food=null;         /* 玉米圈 {x,y,vy,r,eatT}，null=当前无食物 */
+  let fenceSeed=[], flowerSeed=[];
+  const pointer={x:-999,y:-999};
+  const groundY=()=>H*0.72;
+
+  function resize(){
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    W=sec.clientWidth; H=sec.clientHeight;
+    cv.width=W*DPR; cv.height=H*DPR;
+    g.setTransform(DPR,0,0,DPR,0,0);
+    /* 重新布置栅栏与花草（确定性伪随机，resize 不乱跳） */
+    fenceSeed=[]; flowerSeed=[];
+    for(let i=0;i<Math.ceil(W/64)+2;i++) fenceSeed.push(i*64+((i*97)%23));
+    for(let i=0;i<26;i++){
+      flowerSeed.push({x:(i*173.3)%W, y:groundY()+8+((i*61.7)%(H-groundY()-14)), k:i%3, s:0.7+((i*37)%10)/18});
+    }
+  }
+
+  /* ---------- ② 小猪 ---------- */
+  function spawnPig(){
+    const dir=Math.random()<0.5?1:-1;                 /* 从左或右进来 */
+    const pal=CFG.pals[(Math.random()*CFG.pals.length)|0];
+    pigs.push({
+      x: dir>0? -60 : W+60, y:groundY()-30,
+      dir, speed:CFG.walkMin+Math.random()*(CFG.walkMax-CFG.walkMin),
+      R: 27+Math.random()*11,
+      grumpy: Math.random()<CFG.grumpyRate,           /* 性格盲盒 */
+      state:'walk', vy:0, hop:0,
+      walkT:Math.random()*9, wiggle:0,
+      oinkT:0, escapeAt:0, squeakT:2+Math.random()*2,
+      blink:2+Math.random()*3, outfits:[], pal,
+      squash:0, happyT:0, bubbleT:0, bubbleText:'', bubbleDelay:0, gatherOff:0,
+    });
+  }
+  function drawOutfitThumb(c,kind){                   /* 托盘里的衣服小图标 */
+    const q=c.getContext('2d'); q.clearRect(0,0,88,88);
+    q.save(); q.translate(44,44); q.scale(2,2); q.lineJoin='round';
+    if(kind==='bow'){                                 /* 粉粉蝴蝶结 */
+      q.fillStyle='#f4b8c0'; q.strokeStyle='#e89da8'; q.lineWidth=1.6;
+      [[-9,-3,-0.45],[9,-3,0.45]].forEach(v=>{ q.save(); q.translate(v[0],v[1]); q.rotate(v[2]);
+        q.beginPath(); q.ellipse(0,0,8.5,6,0,0,7); q.fill(); q.stroke(); q.restore(); });
+      q.beginPath(); q.arc(0,-1,4.6,0,7); q.fill(); q.stroke();
+    }else if(kind==='cap'){                           /* 小黄帽 */
+      q.fillStyle='#f6d879'; q.strokeStyle='#e3bd55'; q.lineWidth=1.6;
+      q.beginPath(); q.arc(0,2,12,Math.PI,0); q.closePath(); q.fill(); q.stroke();
+      q.beginPath(); q.ellipse(0,3.5,15,3.4,0,0,7); q.fill(); q.stroke();
+      q.fillStyle='#fdf3d0'; q.beginPath(); q.arc(0,-10,2.6,0,7); q.fill(); q.stroke();
+    }else if(kind==='blush'){                         /* 粉粉腮红 */
+      q.fillStyle='#f6b7c0'; q.globalAlpha=0.9;
+      [[-10,1],[10,1]].forEach(p2=>{ q.beginPath(); q.ellipse(p2[0],p2[1],7.5,5.5,0,0,7); q.fill(); });
+      q.globalAlpha=1; q.strokeStyle='#ef9aa7'; q.lineWidth=1.2;
+      [[-10,1],[10,1]].forEach(p2=>{ q.beginPath(); q.ellipse(p2[0],p2[1],7.5,5.5,0,0,7); q.stroke(); });
+      q.fillStyle='#fff';                             /* 腮红上的小白点 */
+      [[-12,-1],[-8,3],[8,-1],[12,3]].forEach(p2=>{ q.beginPath(); q.arc(p2[0],p2[1],1.1,0,7); q.fill(); });
+    }else{                                            /* 小雏菊 */
+      q.fillStyle='#ffffff'; q.strokeStyle='#e3ddcf'; q.lineWidth=1.4;
+      for(let i=0;i<6;i++){ const a=i*Math.PI/3;
+        q.save(); q.translate(Math.cos(a)*7.5,Math.sin(a)*7.5); q.rotate(a);
+        q.beginPath(); q.ellipse(0,0,6,3.6,0,0,7); q.fill(); q.stroke(); q.restore(); }
+      q.fillStyle='#f2cf6b'; q.beginPath(); q.arc(0,0,4.4,0,7); q.fill();
+    }
+    q.restore();
+  }
+  function initTray(){
+    if(initTray.done) return;                 /* 只绑一次，避免重复进入游戏后点一下触发多次 */
+    initTray.done=true;
+    document.querySelectorAll('#pigClothes button').forEach(b=>{
+      drawOutfitThumb(b.querySelector('canvas'), b.dataset.of);
+      b.addEventListener('click',()=>{
+        const T=window.Tone;
+        if(!heldPig){                                 /* 没抱着小猪：托盘抖动提示 */
+          tray.animate([{transform:'translateX(-50%)'},{transform:'translateX(calc(-50% - 6px))'},
+            {transform:'translateX(calc(-50% + 6px))'},{transform:'translateX(-50%)'}],{duration:280});
+          showHint('先点一只小猪抱起来，再挑衣服哦');
+          return;
+        }
+        const of=b.dataset.of;
+        const i=heldPig.outfits.indexOf(of);
+        if(i>=0){                                     /* 已佩戴：再点一下脱下 */
+          heldPig.outfits.splice(i,1);
+          showHint('把这件脱下来啦');
+        }else{                                        /* 新佩戴：最多两件，满了挤掉最早一件 */
+          if(heldPig.outfits.length>=CFG.maxOutfits) heldPig.outfits.shift();
+          heldPig.outfits.push(of);
+          showHint('它很喜欢这份小礼物');
+        }
+        syncTray(); T&&T.pop(); T.squeak&&T.squeak();                 /* 穿衣声+小猪开心哼一声 */
+      });
+    });
+  }
+  function syncTray(){
+    document.querySelectorAll('#pigClothes button').forEach(b=>{
+      b.classList.toggle('sel', !!heldPig && heldPig.outfits.includes(b.dataset.of));
+    });
+  }
+  let hintTimer=0;
+  function showHint(t){
+    hint.textContent=t; hint.style.opacity=1;
+    clearTimeout(hintTimer);
+    hintTimer=setTimeout(()=>hint.style.opacity=0, 2200);
+  }
+
+  /* ---------- ③ 更新 ---------- */
+  function update(dt){
+    time+=dt;
+    /* 定时生成新小猪 */
+    spawnT-=dt;
+    if(spawnT<=0&&pigs.length<CFG.maxPigs){
+      spawnPig(); spawnT=CFG.spawnMin+Math.random()*(CFG.spawnMax-CFG.spawnMin);
+    }
+    /* 玉米圈：下落 → 落地开饭 → 越吃越小 → 吃完散开 */
+    if(food){
+      if(food.eatT<=0){
+        food.vy+=CFG.feedG*dt; food.y+=food.vy*dt;
+        if(food.y>=groundY()-8){                       /* 落地：开饭！ */
+          food.y=groundY()-8; food.eatT=CFG.eatDuration;
+          const T=window.Tone; T&&T.plop&&T.plop();
+          let gi=0;                                    /* 散步中的小猪两侧交替排队聚拢 */
+          pigs.forEach(p=>{
+            if(p.state!=='walk') return;
+            p.state='gather';
+            p.gatherOff=(gi%2?1:-1)*(16+((gi/2)|0)*30); gi++;
+          });
+        }
+      }else{
+        food.eatT-=dt;
+        food.r=CFG.foodR*Math.max(0.12, food.eatT/CFG.eatDuration);  /* 越吃越小 */
+        if(food.eatT<=0){                              /* 吃完啦：散开恢复散步 */
+          food=null;
+          pigs.forEach(p=>{
+            if(p.state==='gather'||p.state==='eat'){
+              p.state='walk'; p.dir=Math.random()<0.5?1:-1; p.happyT=1.2;
+            }
+          });
+        }
+      }
+    }
+    for(let i=pigs.length-1;i>=0;i--){
+      const p=pigs[i];
+      p.blink-=dt; if(p.blink<-0.12) p.blink=2.5+Math.random()*3.5;
+      p.squash=Math.max(0,p.squash-dt*2.4);
+      p.happyT=Math.max(0,p.happyT-dt);               /* 开心表情倒计时 */
+      p.bubbleT=Math.max(0,p.bubbleT-dt);             /* 对话气泡倒计时 */
+      if(p.state==='walk'){
+        p.walkT+=dt; p.x+=p.dir*p.speed*dt;
+        if((p.dir>0&&p.x>W+80)||(p.dir<0&&p.x<-80)) pigs.splice(i,1);   /* 溜达出画面 */
+      }else if(p.state==='gather'){                   /* 闻到香味，跑向玉米圈 */
+        const tx=(food?food.x:W*0.5)+p.gatherOff;
+        const dx=tx-p.x;
+        p.dir=dx>=0?1:-1;
+        p.walkT+=dt; p.x+=p.dir*CFG.gatherSpeed*dt;
+        p.y+=(groundY()-p.R*0.72-p.y)*Math.min(1,dt*8);
+        if(Math.abs(dx)<5){                            /* 到位：开吃 */
+          p.state='eat';
+          p.dir=(food&&food.x>p.x)?1:-1;               /* 面朝食物 */
+          p.happyT=999;                                /* 进食期间保持眯眯笑眼 */
+          p.bubbleDelay=Math.random()<CFG.eatBubbleRate ? 0.3+Math.random()*0.9 : 0;
+          p.squeakT=0.3+Math.random()*0.8;
+        }
+      }else if(p.state==='eat'){                      /* 低头吧唧吧唧 */
+        p.walkT+=dt*7;                                 /* 复用走路 bob 当点头进食 */
+        if(p.bubbleDelay>0){                           /* 稍等片刻再弹喜悦气泡，更自然 */
+          p.bubbleDelay-=dt;
+          if(p.bubbleDelay<=0){
+            p.bubbleText=CFG.eatTexts[(Math.random()*CFG.eatTexts.length)|0];
+            p.bubbleT=2.2;
+          }
+        }
+        p.squeakT-=dt;
+        if(p.squeakT<=0){ p.squeakT=0.9+Math.random()*0.9;
+          const T=window.Tone; T&&T.munch&&T.munch(); }               /* 吧唧嚼食声 */
+      }else if(p.state==='held'){
+        /* 抱起后飘到画面中央偏上的展示位，鼠标腾出来去挑装饰 */
+        const hx=W*0.5, hy=H*0.36;
+        p.x+=(hx-p.x)*Math.min(1,dt*6);
+        p.y+=(hy-p.y)*Math.min(1,dt*6);
+        if(p.grumpy){                                 /* 暴躁：扭动 + 哼哼 + 倒计时挣脱 */
+          p.wiggle=Math.sin(time*22)*0.16;
+          p.oinkT-=dt;
+          if(p.oinkT<=0){ p.oinkT=0.8+Math.random()*0.8;
+            const T=window.Tone; T&&T.oink(true); }                   /* 挣扎哼声：又大又长 */
+          p.escapeAt-=dt;
+          if(p.escapeAt<=0){                          /* 挣脱！ */
+            p.state='flee'; p.wiggle=0; setHeld(null);
+            p.dir=p.x<W/2?-1:1;
+            for(let k=0;k<3;k++) puffs.push({x:p.x+(Math.random()*30-15),y:p.y-30,r:6+Math.random()*5,a:0.55});
+            const T=window.Tone; T&&T.squeal&&T.squeal();             /* 尖叫着挣脱 */
+          }
+        }else{                                        /* 温顺：安静，偶尔奶哼 + 飘心 */
+          p.wiggle=Math.sin(time*3)*0.03;
+          p.squeakT-=dt;
+          if(p.squeakT<=0){ p.squeakT=1.4+Math.random()*1.2;
+            const T=window.Tone; T&&T.squeak();
+            hearts.push({x:p.x+p.R*0.5,y:p.y-p.R,t:0}); }
+        }
+      }else if(p.state==='fall'){                     /* 被放下：软软落地 */
+        p.vy+=CFG.fallG*dt; p.y+=p.vy*dt;
+        if(p.y>=groundY()-p.R*0.72){
+          p.y=groundY()-p.R*0.72; p.state='walk'; p.squash=0.3;
+          p.dir=Math.random()<0.5?1:-1;
+          p.vy=0; setHeld(null);
+          for(let k=0;k<4;k++) dusts.push({x:p.x+(Math.random()*36-18),y:p.y+p.R*0.6,r:4+Math.random()*4,a:0.5});
+          const T=window.Tone; T&&T.thud();
+        }
+      }else if(p.state==='flee'){                     /* 逃跑冲出画面 */
+        p.walkT+=dt; p.x+=p.dir*CFG.fleeSpeed*dt;
+        if((p.dir>0&&p.x>W+90)||(p.dir<0&&p.x<-90)) pigs.splice(i,1);
+      }
+    }
+    /* 粒子 */
+    for(let i=hearts.length-1;i>=0;i--){ const h=hearts[i]; h.t+=dt; if(h.t>1.3) hearts.splice(i,1); }
+    for(let i=puffs.length-1;i>=0;i--){ const s=puffs[i]; s.r+=dt*14; s.a-=dt*1.1; s.y-=dt*24; if(s.a<=0) puffs.splice(i,1); }
+    for(let i=dusts.length-1;i>=0;i--){ const d=dusts[i]; d.r+=dt*10; d.a-=dt*1.4; if(d.a<=0) dusts.splice(i,1); }
+  }
+
+  /* ---------- ④ 绘制 ---------- */
+  function drawScene(){
+    const gy=groundY();
+    g.fillStyle=CFG.bg; g.fillRect(0,0,W,H);
+    /* 云 */
+    g.fillStyle='rgba(255,255,255,.85)';
+    for(let i=0;i<3;i++){
+      const cx=((time*8*(0.5+i*0.22)+i*380)%(W+260))-130;
+      const cy=H*0.12+i*H*0.07, s=0.8+i*0.3;
+      g.beginPath();
+      g.arc(cx,cy,22*s,0,7); g.arc(cx+24*s,cy+4*s,16*s,0,7); g.arc(cx-24*s,cy+5*s,15*s,0,7);
+      g.fill();
+    }
+    /* 草地 */
+    g.fillStyle=CFG.grass; g.fillRect(0,gy,W,H-gy);
+    g.fillStyle=CFG.ground; g.fillRect(0,gy+10,W,H-gy-10);
+    /* 小花小草 */
+    flowerSeed.forEach(f=>{
+      if(f.k===0){ g.strokeStyle='#b9d4ae'; g.lineWidth=2; g.lineCap='round';
+        g.beginPath(); g.moveTo(f.x,f.y+7); g.quadraticCurveTo(f.x+2,f.y,f.x+4,f.y-5*f.s); g.stroke(); }
+      else if(f.k===1){ g.fillStyle='#f4c2c8';
+        g.beginPath(); g.arc(f.x,f.y,3.4*f.s,0,7); g.fill();
+        g.fillStyle='#f9e2a8'; g.beginPath(); g.arc(f.x,f.y,1.4*f.s,0,7); g.fill(); }
+      else{ g.fillStyle='#cfdff0'; g.beginPath(); g.arc(f.x,f.y,2.6*f.s,0,7); g.fill(); }
+    });
+    /* 栅栏 */
+    g.fillStyle=CFG.fence;
+    fenceSeed.forEach(x=>{ g.fillRect(x,gy-34,10,34); g.beginPath(); g.arc(x+5,gy-34,5,Math.PI,0); g.fill(); });
+    g.fillStyle=CFG.fenceDark;
+    g.fillRect(0,gy-26,W,5); g.fillRect(0,gy-12,W,5);
+  }
+  function drawPig(p){
+    const R=p.R, gy=groundY();
+    /* 影子 */
+    g.fillStyle='rgba(150,140,110,.14)';
+    g.beginPath(); g.ellipse(p.x,gy+2,R*0.85,R*0.2,0,0,7); g.fill();
+    g.save();
+    g.translate(p.x, p.y - (p.state==='walk'||p.state==='flee'||p.state==='gather'||p.state==='eat'?Math.abs(Math.sin(p.walkT*9))*4:0));
+    g.rotate(p.wiggle);
+    if(p.state==='fall'||p.squash>0) g.scale(1+p.squash*0.5, 1-p.squash);
+    g.scale(p.dir,1);
+    /* 腿 */
+    const sw=(p.state==='walk'||p.state==='flee'||p.state==='gather')?Math.sin(p.walkT*10)*5:0;
+    g.fillStyle=p.pal[1];
+    [[-R*0.45,sw],[R*0.42,-sw]].forEach(l=>{
+      g.beginPath(); g.roundRect? g.roundRect(l[0]-6,R*0.5,12,R*0.34,5):g.rect(l[0]-6,R*0.5,12,R*0.34); g.fill();
+    });
+    /* 身体 */
+    g.fillStyle=p.pal[0];
+    g.beginPath(); g.ellipse(0,0,R,R*0.78,0,0,7); g.fill();
+    /* 耳朵 */
+    g.fillStyle=p.pal[1];
+    [[-R*0.52,-R*0.62,-0.4],[R*0.42,-R*0.66,0.35]].forEach(e=>{
+      g.save(); g.translate(e[0],e[1]); g.rotate(e[2]);
+      g.beginPath(); g.ellipse(0,0,R*0.16,R*0.24,0,0,7); g.fill(); g.restore();
+    });
+    /* 眼睛（会眨；被摸头开心时弯成眯眯眼） */
+    const er=Math.max(2,R*0.09), closed=p.blink<0.12;
+    g.fillStyle=CFG.ink;
+    [[-R*0.3,-R*0.16],[R*0.24,-R*0.18]].forEach(e=>{
+      if(p.happyT>0){                                    /* 开心笑眼：倒U弧线 */
+        g.strokeStyle=CFG.ink; g.lineWidth=Math.max(2,R*0.07); g.lineCap='round';
+        g.beginPath(); g.arc(e[0],e[1]+er*0.6,er*1.05,Math.PI+0.5,-0.5); g.stroke();
+      }
+      else if(closed){ g.fillRect(e[0]-er,e[1],er*2,er*0.5); }
+      else{ g.beginPath(); g.arc(e[0],e[1],er,0,7); g.fill(); }
+    });
+    /* 大鼻子 */
+    g.fillStyle=p.pal[1];
+    g.beginPath(); g.ellipse(-R*0.03,R*0.1,R*0.3,R*0.22,0,0,7); g.fill();
+    g.fillStyle=p.pal[3];
+    g.beginPath(); g.arc(-R*0.11,R*0.1,R*0.05,0,7); g.fill();
+    g.beginPath(); g.arc(R*0.05,R*0.1,R*0.05,0,7); g.fill();
+    /* 卷尾巴 */
+    g.strokeStyle=p.pal[1]; g.lineWidth=R*0.09; g.lineCap='round';
+    g.beginPath(); g.arc(-R*1.02,-R*0.1,R*0.16,-1.2,1.6); g.stroke();
+    /* ---------- 小衣服（最多同时佩戴两件） ---------- */
+    if(p.outfits.includes('bow')){
+      g.save(); g.translate(R*0.42,-R*0.72); g.rotate(0.2);
+      g.fillStyle='#f4b8c0'; g.strokeStyle='#e89da8'; g.lineWidth=1.6;
+      [[-6,-2,-0.4],[6,-2,0.4]].forEach(v=>{ g.save(); g.translate(v[0],v[1]); g.rotate(v[2]);
+        g.beginPath(); g.ellipse(0,0,5.6,4,0,0,7); g.fill(); g.stroke(); g.restore(); });
+      g.beginPath(); g.arc(0,0,2.8,0,7); g.fill(); g.stroke(); g.restore();
+    }
+    if(p.outfits.includes('cap')){
+      g.save(); g.translate(0,-R*0.88);
+      g.fillStyle='#f6d879'; g.strokeStyle='#e3bd55'; g.lineWidth=1.6;
+      g.beginPath(); g.arc(0,0,R*0.5,Math.PI,0); g.closePath(); g.fill(); g.stroke();
+      g.beginPath(); g.ellipse(0,1,R*0.6,R*0.13,0,0,7); g.fill(); g.stroke(); g.restore();
+    }
+    if(p.outfits.includes('blush')){
+      g.fillStyle='rgba(246,167,178,.6)';             /* 粉粉腮红：两团软乎乎的粉晕 */
+      g.beginPath(); g.ellipse(-R*0.44,R*0.16,R*0.2,R*0.13,0,0,7); g.fill();
+      g.beginPath(); g.ellipse(R*0.34,R*0.16,R*0.2,R*0.13,0,0,7); g.fill();
+    }
+    if(p.outfits.includes('flower')){
+      g.save(); g.translate(-R*0.5,-R*0.6);
+      g.fillStyle='#fff'; g.strokeStyle='#e3ddcf'; g.lineWidth=1.2;
+      for(let i2=0;i2<6;i2++){ const a=i2*Math.PI/3;
+        g.save(); g.translate(Math.cos(a)*5.2,Math.sin(a)*5.2); g.rotate(a);
+        g.beginPath(); g.ellipse(0,0,4.4,2.6,0,0,7); g.fill(); g.stroke(); g.restore(); }
+      g.fillStyle='#f2cf6b'; g.beginPath(); g.arc(0,0,3,0,7); g.fill(); g.restore();
+    }
+    /* ---------- 摸头对话气泡 ---------- */
+    if(p.bubbleT>0&&p.bubbleText){
+      g.save();
+      g.translate(R*0.18,-R*1.5);
+      g.scale(p.dir,1);                                  /* 抵消身体朝向翻转，文字保持正向 */
+      g.globalAlpha=Math.min(1,p.bubbleT/0.3);           /* 末尾淡出 */
+      g.font='12px "PingFang SC","Microsoft YaHei",sans-serif';
+      const bw=g.measureText(p.bubbleText).width+22, bh=26;
+      g.fillStyle='rgba(255,253,248,.96)'; g.strokeStyle='#e6dfd1'; g.lineWidth=1.5;
+      g.beginPath();
+      if(g.roundRect) g.roundRect(-bw/2,-bh,bw,bh,13); else g.rect(-bw/2,-bh,bw,bh);
+      g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(-5,-0.5); g.lineTo(5,-0.5); g.lineTo(0,7); g.closePath();  /* 指向小猪的三角 */
+      g.fillStyle='rgba(255,253,248,.96)'; g.fill();
+      g.fillStyle='#8d7f78'; g.textAlign='center'; g.textBaseline='middle';
+      g.fillText(p.bubbleText,0,-bh/2);
+      g.restore();
+    }
+    g.restore();
+  }
+  /* 圆圈玉米圈：金黄环身 + 内孔 + 表面烤色小颗粒 */
+  function drawFood(x,y,r){
+    g.save(); g.translate(x,y);
+    g.fillStyle='#f6d879'; g.strokeStyle='#e3bd55'; g.lineWidth=2;
+    g.beginPath(); g.arc(0,0,r,0,7); g.fill(); g.stroke();
+    g.fillStyle=CFG.bg;                                  /* 内孔抠出环形 */
+    g.beginPath(); g.arc(0,0,r*0.42,0,7); g.fill();
+    g.strokeStyle='#e3bd55'; g.lineWidth=1.2;
+    g.beginPath(); g.arc(0,0,r*0.42,0,7); g.stroke();
+    g.fillStyle='#e8b95a';                               /* 表面烤色小颗粒 */
+    [[-0.55,-0.3],[0.5,-0.42],[0.62,0.3],[-0.42,0.5]].forEach(d=>{
+      g.beginPath(); g.arc(d[0]*r,d[1]*r,Math.max(1.2,r*0.09),0,7); g.fill(); });
+    g.restore();
+  }
+  function drawHeart(h){
+    const a=1-h.t/1.3, y=h.y-h.t*46, x=h.x+Math.sin(h.t*6)*5;
+    g.save(); g.translate(x,y); g.scale(1,1); g.globalAlpha=Math.max(a,0);
+    g.fillStyle='#f2a7b0';
+    const s=6+h.t*3;
+    g.beginPath();
+    g.moveTo(0,s*0.9);
+    g.bezierCurveTo(-s*1.2,s*0.1,-s*0.7,-s*0.8,0,-s*0.25);
+    g.bezierCurveTo(s*0.7,-s*0.8,s*1.2,s*0.1,0,s*0.9);
+    g.fill(); g.restore(); g.globalAlpha=1;
+  }
+  /* 一只卡通手套小手（与参考图同款：白填充黑描边、四指并拢微张；mir=-1 时镜像，作为另一只手） */
+  function drawHandX(x,y,rot,mir){
+    g.save(); g.translate(x,y); g.rotate(rot); g.scale(mir,1);
+    g.fillStyle='#fffdfb'; g.strokeStyle='#40373a';
+    g.lineWidth=3; g.lineJoin='round'; g.lineCap='round';
+    /* 手套轮廓：手腕左下 → 拇指 → 食指/中指/无名指/小指 → 手腕收口 */
+    g.beginPath();
+    g.moveTo(-12, 18);
+    g.quadraticCurveTo(-17, 16, -20, 11);
+    g.quadraticCurveTo(-26, 9, -26, 2);
+    g.quadraticCurveTo(-26, -5, -19, -5);
+    g.quadraticCurveTo(-14, -5, -12, -9);
+    g.quadraticCurveTo(-15, -13, -14, -18);
+    g.quadraticCurveTo(-13, -25, -7, -25);
+    g.quadraticCurveTo(-2, -25, -2, -18);
+    g.quadraticCurveTo(-2, -27, 4, -27);
+    g.quadraticCurveTo(9, -27, 9, -18);
+    g.quadraticCurveTo(10, -24, 15, -23);
+    g.quadraticCurveTo(19, -22, 18, -15);
+    g.quadraticCurveTo(22, -16, 24, -11);
+    g.quadraticCurveTo(26, -5, 20, -3);
+    g.quadraticCurveTo(19, 6, 13, 13);
+    g.quadraticCurveTo(6, 19, -2, 19);
+    g.quadraticCurveTo(-8, 19, -12, 18);
+    g.closePath(); g.fill(); g.stroke();
+    /* 两道指缝短弧线 */
+    g.lineWidth=2;
+    g.beginPath(); g.moveTo(-5,-16); g.quadraticCurveTo(-5.6,-11,-5,-5); g.stroke();
+    g.beginPath(); g.moveTo(6.5,-18); g.quadraticCurveTo(6.2,-12,6.8,-6); g.stroke();
+    g.restore();
+  }
+  /* 抱起小猪时：两只手一左一右把它托起来 */
+  function drawCarryHands(p){
+    const bob=Math.sin(time*2.4)*3;                 /* 轻轻上下颠 */
+    drawHandX(p.x-p.R*1.02, p.y+p.R*0.36+bob, 0.3, 1);
+    drawHandX(p.x+p.R*1.02, p.y+p.R*0.36+bob, -0.3, -1);
+  }
+  function render(){
+    g.clearRect(0,0,W,H);
+    drawScene();
+    pigs.slice().sort((a,b)=>a.y-b.y).forEach(drawPig);
+    if(heldPig && heldPig.state==='held') drawCarryHands(heldPig);
+    hearts.forEach(drawHeart);
+    g.fillStyle='#fdfdfd';
+    puffs.forEach(s=>{ g.globalAlpha=Math.max(s.a,0);
+      g.beginPath(); g.arc(s.x,s.y,s.r,0,7); g.fill(); });
+    g.fillStyle='#cdbfa5';
+    dusts.forEach(d=>{ g.globalAlpha=Math.max(d.a,0);
+      g.beginPath(); g.arc(d.x,d.y,d.r,0,7); g.fill(); });
+    g.globalAlpha=1;
+    /* 玉米圈（下落中 / 被吃中） */
+    if(food) drawFood(food.x, food.y, food.r);
+    /* 投喂待发：鼠标变成拿着玉米圈的卡通手套 */
+    if(feedArmed && !food){
+      drawHandX(pointer.x, pointer.y, 0, 1);
+      drawFood(pointer.x, pointer.y-32, CFG.foodR*0.9);
+    }
+  }
+  function frame(now){
+    if(!active) return;
+    const dt=Math.min((now-last)/1000,0.05); last=now;
+    update(dt); render();
+    raf=requestAnimationFrame(frame);
+  }
+
+  /* ---------- ⑤ 交互 ---------- */
+  function pt(e){
+    const rc=cv.getBoundingClientRect();
+    return {x:e.clientX-rc.left, y:e.clientY-rc.top};
+  }
+  cv.addEventListener('pointerdown',e=>{
+    const p0=pt(e); pointer.x=p0.x; pointer.y=p0.y;
+    try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+    if(feedArmed){                                   /* 投喂待发：点一下丢下玉米圈 */
+      food={x:p0.x,y:p0.y,vy:0,r:CFG.foodR,eatT:0};
+      setFeed(false);
+      const T=window.Tone; T&&T.pop&&T.pop();
+      return;
+    }
+    if(heldPig) return;
+    /* 挑最近的小猪（只能互动散步中的） */
+    let best=null,bd=1e9;
+    pigs.forEach(p=>{
+      if(p.state!=='walk') return;
+      const d=Math.hypot(p0.x-p.x,p0.y-p.y);
+      if(d<p.R*1.5&&d<bd){ bd=d; best=p; }
+    });
+    if(!best) return;
+    if(!carryMode){
+      /* 开关关：摸摸头——开心眯眯眼 + 飘心 + 概率触发对话气泡 */
+      best.squash=0.25;
+      best.happyT=2.2;
+      hearts.push({x:best.x+best.R*0.4,y:best.y-best.R,t:0});
+      const T=window.Tone; T&&T.pat&&T.pat();                         /* 舒服地哼唧 */
+      if(Math.random()<CFG.patBubbleRate){
+        best.bubbleText=CFG.patTexts[(Math.random()*CFG.patTexts.length)|0];
+        best.bubbleT=2.4;
+      }
+      return;
+    }
+    /* 开关开：抱起 */
+    best.state='held';
+    best.escapeAt=CFG.escapeMin+Math.random()*(CFG.escapeMax-CFG.escapeMin);
+    best.oinkT=0.1;                                   /* 暴躁猪立刻哼出声 */
+    best.squeakT=0.15;                                /* 温顺猪也立刻奶哼一声 */
+    const T=window.Tone; T&&T.pickup&&T.pickup();     /* 被抱起的惊喜短叫 */
+    setHeld(best);
+    showHint(best.grumpy
+      ? '这只小猪脾气有点爆，大声哼哼着想要挣脱！'
+      : '这只小猪好乖呀，安安静静让你打扮');
+  });
+  cv.addEventListener('pointermove',e=>{
+    const p=pt(e); pointer.x=p.x; pointer.y=p.y;
+  });
+  /* 注意：松手不再放下小猪——抱起状态会一直保留，
+     直到点「放下它」按钮（或暴躁小猪自己挣脱） */
+  dropBtn.addEventListener('click',()=>{
+    if(!heldPig) return;
+    heldPig.state='fall'; heldPig.vy=Math.min(0,-40);
+    heldPig.wiggle=0;
+    const T=window.Tone; T&&T.swish&&T.swish(); T.squeak&&T.squeak(); /* 放回草地：挥袖声+小猪哼一声 */
+    showHint('轻轻放回草地啦，可以再抱另一只');
+  });
+  /* 「抱起来」开关：开=点击小猪抱起打扮，关=点击小猪摸头互动 */
+  const carryBtn=document.getElementById('carryToggle');
+  carryBtn.addEventListener('click',()=>{
+    carryMode=!carryMode;
+    carryBtn.classList.toggle('on', carryMode);
+    carryBtn.textContent=carryMode?'抱起来：开':'抱起来：关';
+    const T=window.Tone; T&&T.pop&&T.pop();
+    showHint(carryMode?'抱起来模式已开：点击小猪就能抱起来打扮':'抱起来模式已关：点击小猪会摸摸头哦');
+  });
+  /* 左下角「投喂」按键：待发时鼠标变成拿着玉米圈的手套，再点一下丢下食物 */
+  const feedBtn=document.getElementById('pigFeed');
+  function setFeed(on){
+    feedArmed=on;
+    feedBtn.classList.toggle('on', on);
+    cv.style.cursor=on?'none':'pointer';
+  }
+  feedBtn.addEventListener('click',()=>{
+    setFeed(!feedArmed);
+    const T=window.Tone; T&&T.pop&&T.pop();
+    showHint(feedArmed?'移动手套选好位置，再点一下丢下玉米圈':'已收起玉米圈');
+  });
+
+  /* ---------- ⑥ 对外接口（外壳调用） ---------- */
+  window.PigGame={
+    enter(){
+      if(active) return; active=true;
+      cv.style.cursor='pointer';
+      resize(); initTray(); syncTray();
+      showHint('打开「抱起来」开关，点击小猪就能抱起打扮；关掉后点击小猪会摸摸头');
+      last=performance.now();
+      raf=requestAnimationFrame(frame);
+    },
+    leave(){
+      active=false; cancelAnimationFrame(raf);
+      cv.style.cursor='';
+      if(heldPig){ heldPig.state='walk'; heldPig.vy=0;
+        heldPig.y=groundY()-heldPig.R*0.72; }
+      setFeed(false); food=null;                     /* 投喂状态复位 */
+      pigs.forEach(p=>{ if(p.state==='gather'||p.state==='eat'){ p.state='walk'; p.happyT=0; } });
+      cv.style.cursor='';
+      setHeld(null); hint.style.opacity=0;
+      pointer.x=-999; pointer.y=-999;
+    },
+  };
+})();
+</script>
+
+<script>
+'use strict';
+/* ============================================================
+ * 游戏4：大眼金鱼看电视（独立模块，不影响其它游戏）
+ * 玩法：点击老式小电视开机，鱼缸里的大眼金鱼会成群凑过来
+ *       围观；再点一下关机，它们又慢悠悠散开自由游动。
+ * ============================================================ */
+(function(){
+  /* ---------- ① 可调参数 ---------- */
+  const CFG = {
+    fishCount   : 6,       // 鱼缸里的大眼金鱼数量
+    watchSpeed  : 0.55,    // 聚拢速度（每秒围观系数增量）
+    scatterSpeed: 0.32,    // 散开速度
+    bg          : '#faf7f1',
+    wood        : '#dcc9a6',
+    woodDark    : '#c2a97f',
+    woodDeep    : '#b89f78',
+    screenOff   : '#75807d',
+    knob        : '#efe3c8',
+    ink         : '#57514d',
+    water       : '#cfe9ea',
+    waterHi     : '#e8f5f3',
+    rim         : '#cfe0da',
+    pals : [              // 金鱼配色（身体 / 鳍尾）
+      ['#f6c291','#eda06a'],
+      ['#fbf0e4','#f2c9a8'],
+      ['#f4b8ae','#e8998e'],
+    ],
+  };
+
+  const cv  = document.getElementById('cvFish');
+  const g   = cv.getContext('2d');
+  const sec = document.getElementById('game-fish');
+
+  let W=0,H=0,DPR=1;
+  let fish=[], bubbles=[], surfaceRipples=[];
+  let tvOn=false, watch=0, active=false, raf=0, last=0, time=0;
+  let blubT=1.2, hoverTV=false;
+  const pointer={x:-999,y:-999};
+
+  /* 电视 / 鱼缸布局（自适应） */
+  const tv={x:0,y:0,w:0,h:0}, bowl={cx:0,cy:0,r:0};
+  function layout(){
+    const m=Math.min(W,H);
+    tv.w=Math.min(W*0.24,340); tv.h=tv.w*0.78;
+    tv.x=W*0.07; tv.y=H*0.36-tv.h*0.4;
+    bowl.r=Math.min(W*0.235,H*0.32);
+    bowl.cx=W*0.68; bowl.cy=H*0.54;
+  }
+  function resize(){
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    W=sec.clientWidth; H=sec.clientHeight;
+    cv.width=W*DPR; cv.height=H*DPR;
+    g.setTransform(DPR,0,0,DPR,0,0);
+    layout();
+  }
+  const waterY=()=>bowl.cy-bowl.r*0.18;
+
+  /* ---------- ② 金鱼 ---------- */
+  function makeFish(i){
+    return {
+      pal:CFG.pals[i%CFG.pals.length],
+      s:15+Math.random()*7,                       // 体型
+      f1:0.24+Math.random()*0.14,                 // 游动频率（每只不同）
+      f2:0.18+Math.random()*0.12,
+      s1:Math.random()*9, s2:Math.random()*9,
+      ox:(Math.random()*2-1), oy:(Math.random()*2-1),
+      x:0,y:0,px:0,dir:1, blink:2+Math.random()*4,
+      w:0,                                        // 个体围观系数（更自然）
+    };
+  }
+  function initFish(){ fish=[]; for(let i=0;i<CFG.fishCount;i++) fish.push(makeFish(i)); }
+  initFish();
+
+  function update(dt){
+    time+=dt;
+    watch=tvOn?Math.min(1,watch+dt*CFG.watchSpeed)
+              :Math.max(0,watch-dt*CFG.scatterSpeed);
+    for(const f of fish){
+      f.blink-=dt; if(f.blink<-0.12) f.blink=2.5+Math.random()*4;
+      f.w+=( (tvOn?1:0)-f.w )*Math.min(1,dt*2.2);   /* 个体平滑趋近全局 */
+      /* 自由巡游位置（李萨如曲线，永不出缸） */
+      const ix=bowl.cx+Math.sin(time*f.f1*6.28+f.s1)*bowl.r*0.5;
+      const iy=waterY()+bowl.r*0.28+Math.sin(time*f.f2*6.28+f.s2)*bowl.r*0.3;
+      /* 围观位置（朝电视一侧聚拢 + 个体错落） */
+      const wx=bowl.cx-bowl.r*0.42+f.ox*bowl.r*0.24;
+      const wy=waterY()+bowl.r*0.16+f.oy*bowl.r*0.3;
+      const e=f.w*f.w*(3-2*f.w);                    /* smoothstep */
+      const nx=ix+(wx-ix)*e, ny=iy+(wy-iy)*e;
+      /* 简单分离力，避免叠在一起 */
+      let sx=0,sy=0;
+      for(const o of fish){ if(o===f) continue;
+        const dx=f.x-o.x, dy=f.y-o.y, d=Math.hypot(dx,dy);
+        if(d>0&&d<(f.s+o.s)*1.15){ sx+=dx/d*(f.s+o.s-d)*0.5; sy+=dy/d*(f.s+o.s-d)*0.5; }
+      }
+      f.px=f.x;
+      f.x+=( (nx-f.x)*Math.min(1,dt*2.6) + sx*dt*2 );
+      f.y+=( (ny-f.y)*Math.min(1,dt*2.6) + sy*dt*2 );
+      const dx=f.x-f.px;
+      if(Math.abs(dx)>0.06) f.dir=dx>0?1:-1;
+    }
+    /* 气泡：偶尔从某条鱼嘴边冒出，开机时更爱吐泡 */
+    blubT-=dt;
+    if(blubT<=0&&fish.length){
+      blubT=(tvOn?0.7:1.6)+Math.random()*1.4;
+      const f=fish[(Math.random()*fish.length)|0];
+      bubbles.push({x:f.x+f.dir*f.s*0.5,y:f.y-f.s*0.4,r:2+Math.random()*2.6,v:26+Math.random()*20});
+      const T=window.Tone; T&&T.blub();
+    }
+    for(let i=bubbles.length-1;i>=0;i--){
+      const b=bubbles[i]; b.y-=b.v*dt; b.x+=Math.sin(time*5+b.y*0.05)*0.4;
+      if(b.y<=waterY()+3){ bubbles.splice(i,1);
+        surfaceRipples.push({x:b.x,t:0}); }
+    }
+    for(let i=surfaceRipples.length-1;i>=0;i--){
+      surfaceRipples[i].t+=dt; if(surfaceRipples[i].t>1) surfaceRipples.splice(i,1);
+    }
+  }
+
+  /* ---------- ③ 绘制 ---------- */
+  function inTVRect(x,y){
+    return x>tv.x-14&&x<tv.x+tv.w+14&&y>tv.y-46&&y<tv.y+tv.h+16;
+  }
+  function drawTV(){
+    /* 天线 */
+    g.strokeStyle=CFG.woodDark; g.lineWidth=4; g.lineCap='round';
+    g.beginPath(); g.moveTo(tv.x+tv.w*0.42,tv.y+6); g.lineTo(tv.x+tv.w*0.22,tv.y-40); g.stroke();
+    g.beginPath(); g.moveTo(tv.x+tv.w*0.52,tv.y+6); g.lineTo(tv.x+tv.w*0.74,tv.y-44); g.stroke();
+    g.fillStyle=CFG.woodDark;
+    g.beginPath(); g.arc(tv.x+tv.w*0.22,tv.y-42,4.5,0,7); g.fill();
+    g.beginPath(); g.arc(tv.x+tv.w*0.74,tv.y-46,4.5,0,7); g.fill();
+    /* 机身 */
+    g.fillStyle='rgba(150,140,110,.14)';
+    g.beginPath(); g.ellipse(tv.x+tv.w/2,tv.y+tv.h+10,tv.w*0.55,10,0,0,7); g.fill();
+    g.fillStyle=CFG.wood; g.strokeStyle=CFG.woodDeep; g.lineWidth=3;
+    g.beginPath();
+    if(g.roundRect) g.roundRect(tv.x,tv.y,tv.w,tv.h,16); else g.rect(tv.x,tv.y,tv.w,tv.h);
+    g.fill(); g.stroke();
+    /* 屏幕 */
+    const sx=tv.x+tv.w*0.07, sy=tv.y+tv.h*0.09, sw=tv.w*0.6, sh=tv.h*0.62;
+    g.fillStyle=CFG.screenOff;
+    g.beginPath();
+    if(g.roundRect) g.roundRect(sx,sy,sw,sh,10); else g.rect(sx,sy,sw,sh);
+    g.fill();
+    if(tvOn){
+      g.save();
+      g.beginPath();
+      if(g.roundRect) g.roundRect(sx,sy,sw,sh,10); else g.rect(sx,sy,sw,sh);
+      g.clip();
+      const pg=g.createLinearGradient(sx,sy,sx+sw,sy+sh);
+      pg.addColorStop(0,'#f9d9c8'); pg.addColorStop(0.5,'#cfe6dd'); pg.addColorStop(1,'#f4e3bd');
+      g.fillStyle=pg; g.fillRect(sx,sy,sw,sh);
+      /* 漂移的粉彩色块（像在放动画片） */
+      for(let i=0;i<3;i++){
+        const bx=sx+sw*(0.5+0.36*Math.sin(time*0.5+i*2.1));
+        const by=sy+sh*(0.5+0.32*Math.cos(time*0.38+i*1.7));
+        g.globalAlpha=0.5;
+        g.fillStyle=['#f6b7a8','#a8d5c4','#f4d98a'][i];
+        g.beginPath(); g.arc(bx,by,sw*0.16,0,7); g.fill();
+      }
+      g.globalAlpha=1;
+      /* 扫描线 + 微闪 */
+      g.fillStyle='rgba(87,81,77,.08)';
+      for(let yy=sy+4;yy<sy+sh;yy+=6) g.fillRect(sx,yy,sw,1.6);
+      g.fillStyle='rgba(255,255,255,'+(0.05+0.03*Math.sin(time*30))+')';
+      g.fillRect(sx,sy,sw,sh);
+      g.restore();
+    }
+    /* 旋钮 ×2 + 小指示灯 */
+    for(let i=0;i<2;i++){
+      const kx=tv.x+tv.w*0.8, ky=tv.y+tv.h*(0.2+i*0.24);
+      g.fillStyle=CFG.knob; g.strokeStyle=CFG.woodDark; g.lineWidth=2;
+      g.beginPath(); g.arc(kx,ky,tv.w*0.07,0,7); g.fill(); g.stroke();
+      g.strokeStyle=CFG.woodDark;
+      g.beginPath(); g.moveTo(kx,ky);
+      g.lineTo(kx+Math.sin(time*(tvOn?0.8:0)+i)*tv.w*0.05, ky-tv.w*0.045); g.stroke();
+    }
+    g.fillStyle=tvOn?'#e5a23f':'#cfd4cd';
+    g.beginPath(); g.arc(tv.x+tv.w*0.8,tv.y+tv.h*0.72,4.5,0,7); g.fill();
+    /* 电视脚 */
+    g.fillStyle=CFG.woodDark;
+    g.fillRect(tv.x+tv.w*0.12,tv.y+tv.h,tv.w*0.09,9);
+    g.fillRect(tv.x+tv.w*0.79,tv.y+tv.h,tv.w*0.09,9);
+    /* 开机柔光锥（照向鱼缸） */
+    if(tvOn&&watch>0.02){
+      g.save(); g.globalCompositeOperation='lighter';
+      const lg=g.createRadialGradient(sx+sw,sy+sh*0.5,10,sx+sw,sy+sh*0.5,bowl.r*2.2);
+      lg.addColorStop(0,'rgba(255,244,214,'+(0.16*watch)+')');
+      lg.addColorStop(1,'rgba(255,244,214,0)');
+      g.fillStyle=lg;
+      g.beginPath();
+      g.moveTo(sx+sw,sy);
+      g.lineTo(bowl.cx+bowl.r*0.4,bowl.cy-bowl.r);
+      g.lineTo(bowl.cx+bowl.r*0.4,bowl.cy+bowl.r);
+      g.lineTo(sx+sw,sy+sh);
+      g.closePath(); g.fill();
+      g.restore();
+    }
+  }
+  function drawBowlBase(){
+    /* 鱼缸圆玻璃 + 底座 */
+    g.fillStyle='rgba(150,140,110,.14)';
+    g.beginPath(); g.ellipse(bowl.cx,bowl.cy+bowl.r+8,bowl.r*0.9,12,0,0,7); g.fill();
+    g.fillStyle=CFG.waterHi;
+    g.globalAlpha=0.35;
+    g.beginPath(); g.arc(bowl.cx,bowl.cy,bowl.r,0,7); g.fill();
+    g.globalAlpha=1;
+  }
+  function drawWaterAndFish(){
+    const wy=waterY(), r=bowl.r;
+    g.save();
+    g.beginPath(); g.arc(bowl.cx,bowl.cy,r-3,0,7); g.clip();
+    /* 水体 */
+    const wg=g.createLinearGradient(0,wy-r*0.3,0,bowl.cy+r);
+    wg.addColorStop(0,CFG.waterHi); wg.addColorStop(1,CFG.water);
+    g.fillStyle=wg; g.fillRect(bowl.cx-r,wy-r*0.2,r*2,r*2);
+    /* 小石子 */
+    g.fillStyle='rgba(190,175,150,.4)';
+    for(let i=0;i<8;i++){
+      const a=i*0.8+0.4;
+      g.beginPath();
+      g.arc(bowl.cx+Math.cos(a)*r*0.62, bowl.cy+r*0.72-((i*29)%14), 4+((i*13)%4),0,7);
+      g.fill();
+    }
+    /* 金鱼 */
+    fish.slice().sort((a,b)=>a.y-b.y).forEach(drawFish);
+    /* 气泡 */
+    g.strokeStyle='rgba(255,255,255,.75)'; g.lineWidth=1.6;
+    bubbles.forEach(b=>{ g.beginPath(); g.arc(b.x,b.y,b.r,0,7); g.stroke(); });
+    /* 水面波浪线 */
+    g.strokeStyle='rgba(255,255,255,.8)'; g.lineWidth=2.4; g.lineCap='round';
+    g.beginPath();
+    for(let px=-r;px<=r;px+=8){
+      const yy=wy+Math.sin(px*0.05+time*2)*2.4;
+      px===-r?g.moveTo(bowl.cx+px,yy):g.lineTo(bowl.cx+px,yy);
+    }
+    g.stroke();
+    /* 水面涟漪 */
+    surfaceRipples.forEach(rp=>{
+      const a=1-rp.t;
+      g.globalAlpha=a*0.55;
+      g.beginPath(); g.ellipse(rp.x,wy,10+rp.t*26,(10+rp.t*26)*0.3,0,0,7); g.stroke();
+    });
+    g.globalAlpha=1;
+    g.restore();
+    /* 玻璃描边 + 高光 */
+    g.strokeStyle=CFG.rim; g.lineWidth=5;
+    g.beginPath(); g.arc(bowl.cx,bowl.cy,r,0,7); g.stroke();
+    g.strokeStyle='rgba(255,255,255,.8)'; g.lineWidth=5; g.lineCap='round';
+    g.beginPath(); g.arc(bowl.cx,bowl.cy,r*0.82,Math.PI*1.08,Math.PI*1.36); g.stroke();
+  }
+  function drawFish(f){
+    g.save(); g.translate(f.x,f.y);
+    g.scale(f.dir,1);
+    const s=f.s;
+    /* 尾巴（摆动） */
+    const sway=Math.sin(time*(2.6+f.f1*3)+f.s1)*(tvOn?2.2:4.5);
+    g.fillStyle=f.pal[1];
+    g.beginPath();
+    g.moveTo(-s*0.6,0);
+    g.quadraticCurveTo(-s*1.5,-s*0.55+sway,-s*1.7,sway*0.5);
+    g.quadraticCurveTo(-s*1.3,s*0.1,-s*1.7,s*0.55+sway);
+    g.quadraticCurveTo(-s*1.4,s*0.35,-s*0.6,s*0.15);
+    g.closePath(); g.fill();
+    /* 背鳍 */
+    g.beginPath();
+    g.moveTo(-s*0.2,-s*0.5);
+    g.quadraticCurveTo(s*0.1,-s*0.95,s*0.35,-s*0.4);
+    g.closePath(); g.fill();
+    /* 身体 */
+    g.fillStyle=f.pal[0];
+    g.beginPath(); g.ellipse(0,0,s,s*0.68,0,0,7); g.fill();
+    /* 肚皮高光 */
+    g.fillStyle='rgba(255,255,255,.4)';
+    g.beginPath(); g.ellipse(-s*0.05,s*0.22,s*0.62,s*0.3,0,0,7); g.fill();
+    /* 两只分开的萌萌大眼睛（瞳孔望向电视，不重叠） */
+    const closed=f.blink<0.12;
+    const look=tvOn?-1:0;                          /* 电视在左侧：瞳孔偏左 */
+    /* 两眼心距 0.59s > 半径和 0.54s，明显分开不重叠 */
+    [[s*0.48,-s*0.14,s*0.29],[ -s*0.11,-s*0.17,s*0.25]].forEach(e=>{
+      g.fillStyle='#ffffff';
+      g.beginPath(); g.arc(e[0],e[1],e[2],0,7); g.fill();
+      g.strokeStyle='rgba(87,81,77,.12)'; g.lineWidth=1;
+      g.beginPath(); g.arc(e[0],e[1],e[2],0,7); g.stroke();
+      if(closed){
+        g.strokeStyle=CFG.ink; g.lineWidth=2;
+        g.beginPath(); g.moveTo(e[0]-e[2]*0.6,e[1]); g.lineTo(e[0]+e[2]*0.6,e[1]); g.stroke();
+      }else{
+        g.fillStyle=CFG.ink;
+        g.beginPath(); g.arc(e[0]+look*e[2]*0.32,e[1]+(tvOn?-e[2]*0.08:0),e[2]*0.52,0,7); g.fill();
+        /* 双高光：左上大亮点 + 右下小亮点，水汪汪更萌 */
+        g.fillStyle='#fff';
+        g.beginPath(); g.arc(e[0]+look*e[2]*0.32-e[2]*0.18,e[1]-e[2]*0.22,e[2]*0.18,0,7); g.fill();
+        g.beginPath(); g.arc(e[0]+look*e[2]*0.32+e[2]*0.2,e[1]+e[2]*0.16,e[2]*0.09,0,7); g.fill();
+      }
+    });
+    /* 嘴：围观时惊讶的小 o，平时抿嘴笑 */
+    g.strokeStyle=CFG.ink; g.lineWidth=1.8; g.lineCap='round';
+    if(tvOn&&f.w>0.6){
+      g.beginPath(); g.arc(s*0.72,s*0.16,s*0.09,0,7); g.stroke();
+    }else{
+      g.beginPath(); g.arc(s*0.6,s*0.1,s*0.12,0.2,Math.PI-0.6); g.stroke();
+    }
+    /* 侧鳍 */
+    g.fillStyle=f.pal[1];
+    g.beginPath(); g.ellipse(s*0.12,s*0.3,s*0.24,s*0.13,0.5+sway*0.06,0,7); g.fill();
+    g.restore();
+  }
+  function render(){
+    g.clearRect(0,0,W,H);
+    g.fillStyle=CFG.bg; g.fillRect(0,0,W,H);
+    /* 墙面柔和色带 */
+    g.fillStyle='#f6efe3';
+    g.beginPath(); g.ellipse(W*0.5,H*1.1,W*0.8,H*0.3,0,0,7); g.fill();
+    drawBowlBase();
+    drawTV();
+    drawWaterAndFish();
+  }
+  function frame(now){
+    if(!active) return;
+    const dt=Math.min((now-last)/1000,0.05); last=now;
+    update(dt); render();
+    raf=requestAnimationFrame(frame);
+  }
+
+  /* ---------- ④ 交互：点击电视开关机 ---------- */
+  function pt(e){
+    const rc=cv.getBoundingClientRect();
+    return {x:e.clientX-rc.left, y:e.clientY-rc.top};
+  }
+  cv.addEventListener('pointerdown',e=>{
+    const p=pt(e);
+    if(inTVRect(p.x,p.y)){
+      tvOn=!tvOn;
+      const T=window.Tone; T&&T.tvToggle(tvOn);
+    }
+  });
+  cv.addEventListener('pointermove',e=>{
+    const p=pt(e); pointer.x=p.x; pointer.y=p.y;
+    const h=inTVRect(p.x,p.y);
+    if(h!==hoverTV){ hoverTV=h; cv.style.cursor=h?'pointer':'default'; }
+  });
+
+  /* ---------- ⑤ 对外接口（外壳调用） ---------- */
+  window.FishGame={
+    enter(){
+      if(active) return; active=true;
+      resize();
+      last=performance.now();
+      raf=requestAnimationFrame(frame);
+    },
+    leave(){
+      active=false; cancelAnimationFrame(raf);
+      cv.style.cursor='';
+      tvOn=false; watch=0;           /* 离开时电视自动关掉，下次来再看 */
+      bubbles.length=0; surfaceRipples.length=0;
+      pointer.x=-999; pointer.y=-999;
+    },
+  };
+})();
+</script>
+
+<script>
+'use strict';
+/* ============================================================
+ * 4合1 合集外壳：首页菜单 ↔ 各游戏页 的切换与公共轻音效
+ * （各游戏模块相互独立，外壳只负责进出与声音，不碰游戏逻辑）
+ * ============================================================ */
+(function(){
+  /* ---------- ① 轻音效模块（Web Audio 实时合成，独立于小鸟游戏） ---------- */
+  const TONE=(()=>{
+    let ctx=null, master=null, muted=false;
+    function ensure(){
+      if(ctx) return true;
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC) return false;
+      ctx=new AC();
+      master=ctx.createGain(); master.gain.value=0.85;
+      master.connect(ctx.destination);
+      return true;
+    }
+    function unlock(){ if(ensure()&&ctx.state==='suspended') ctx.resume(); }
+    /* 一个可调频率滑音的小音符 */
+    function blip(freq,dur,opt={}){
+      if(muted||!ensure()) return;
+      if(ctx.state==='suspended') ctx.resume();
+      const t0=ctx.currentTime+(opt.delay||0);
+      const o=ctx.createOscillator(), gn=ctx.createGain();
+      o.type=opt.type||'sine';
+      o.frequency.setValueAtTime(freq,t0);
+      if(opt.glide) o.frequency.exponentialRampToValueAtTime(Math.max(40,freq*opt.glide),t0+dur);
+      gn.gain.setValueAtTime(0.0001,t0);
+      gn.gain.exponentialRampToValueAtTime(opt.vol||0.06,t0+0.018);
+      gn.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+      let node=o;
+      if(opt.lp){ const f=ctx.createBiquadFilter(); f.type='lowpass';
+        f.frequency.value=opt.lp; o.connect(f); node=f; }
+      node.connect(gn); gn.connect(master);
+      o.start(t0); o.stop(t0+dur+0.06);
+    }
+    return {
+      unlock,
+      /* —— 音效预设（三个新游戏共用） —— */
+      plop(){ blip(300,0.12,{glide:0.57,vol:0.05,lp:900}); },        // 放进水里
+      swish(){ blip(520,0.07,{type:'triangle',glide:0.7,vol:0.03}); },// 拿起
+      oink(angry){                                                    // 小猪哼哼（angry=挣扎：更响更长）
+        blip(angry?300:250,angry?0.26:0.09,{type:'sawtooth',glide:0.55,vol:angry?0.15:0.05,lp:800});
+        blip(angry?220:210,angry?0.32:0.10,{type:'sawtooth',glide:0.6,vol:angry?0.13:0.05,lp:800,delay:angry?0.22:0.11});
+      },
+      squeak(){ blip(880,0.14,{glide:0.72,vol:0.04}); },              // 奶乎乎小哼叫（温顺被抱）
+      pat(){                                                          // 摸头：舒服地哼唧（温柔上扬双音）
+        blip(330,0.08,{type:'triangle',glide:1.2,vol:0.045,lp:1200});
+        blip(420,0.10,{type:'triangle',glide:1.12,vol:0.04,lp:1200,delay:0.09});
+      },
+      pickup(){                                                       // 被抱起瞬间：惊喜短叫
+        blip(700,0.07,{glide:1.5,vol:0.05});
+        blip(1050,0.09,{glide:0.85,vol:0.045,delay:0.06});
+      },
+      squeal(){                                                       // 挣脱逃跑：高声尖叫
+        blip(1200,0.16,{type:'sawtooth',glide:0.45,vol:0.05,lp:2600});
+        blip(950,0.12,{type:'sawtooth',glide:0.5,vol:0.04,lp:2200,delay:0.1});
+      },
+      munch(){                                                        // 进食：吧唧嚼食（低钝双连音）
+        blip(190,0.05,{type:'triangle',glide:0.7,vol:0.05,lp:700});
+        blip(160,0.05,{type:'triangle',glide:0.72,vol:0.045,lp:650,delay:0.07});
+      },
+      thud(){ blip(130,0.12,{glide:0.5,vol:0.06,lp:400}); },          // 软软落地
+      pop(){ blip(500,0.05,{type:'triangle',glide:1.25,vol:0.05}); }, // 抱起/穿衣服
+      blub(){ blip(340,0.08,{glide:0.7,vol:0.032,lp:1000}); },        // 吐泡泡
+      tvToggle(on){                                                   // 电视开关机小旋律
+        (on?[392,523,659]:[659,523,392]).forEach((f,i)=>
+          blip(f,0.09,{type:'triangle',vol:0.045,delay:i*0.07}));
+      },
+      setMuted(m){ muted=m; },
+      isMuted(){ return muted; },
+    };
+  })();
+  window.Tone=TONE;                          /* 各游戏模块通过 window.Tone 取音效 */
+  document.addEventListener('pointerdown',()=>TONE.unlock(),{passive:true});
+
+  /* ---------- ② 首页菜单图标（静态手绘小插画） ---------- */
+  function drawIcons(){
+    const draw=(id,fn)=>{
+      const c=document.getElementById(id); if(!c) return;
+      const q=c.getContext('2d'); q.save(); q.scale(2,2); fn(q); q.restore();
+    };
+    /* 笼中小鸟 */
+    draw('icBird',q=>{
+      q.lineJoin='round'; q.lineCap='round';
+      q.strokeStyle='#b9bdc4'; q.lineWidth=2.6;               /* 鸟笼穹顶与栖木 */
+      q.beginPath(); q.arc(43,46,27,Math.PI*1.02,Math.PI*1.98); q.stroke();
+      q.beginPath(); q.moveTo(43,19); q.lineTo(43,13); q.stroke();
+      [28,43,58].forEach(x=>{ q.beginPath(); q.moveTo(x,21+Math.abs(43-x)*0.12);
+        q.lineTo(x,58); q.stroke(); });
+      q.beginPath(); q.moveTo(20,58); q.lineTo(66,58); q.stroke();
+      q.fillStyle='#f3dc8e';                                   /* 小鸟身体 */
+      q.beginPath(); q.ellipse(41,48,14,11,0,0,7); q.fill();
+      q.fillStyle='#f8e6ab';
+      q.beginPath(); q.arc(51,39,9.5,0,7); q.fill();
+      q.strokeStyle='#eccd7d'; q.lineWidth=2.4;                /* 呆毛 */
+      q.beginPath(); q.moveTo(50,30); q.quadraticCurveTo(52,25,56,26); q.stroke();
+      q.fillStyle='#e9d17e';                                   /* 小翅膀 */
+      q.beginPath(); q.ellipse(35,49,7,8,0.3,0,7); q.fill();
+      q.fillStyle='#57514d';                                   /* 眼睛 */
+      q.beginPath(); q.arc(54.5,37.5,1.8,0,7); q.fill();
+      q.fillStyle='#e3a05c';                                   /* 小嘴 */
+      q.beginPath(); q.moveTo(60,38.5); q.lineTo(66,40.5); q.lineTo(60,42.5);
+      q.closePath(); q.fill();
+      q.fillStyle='rgba(242,184,167,.7)';                      /* 腮红 */
+      q.beginPath(); q.arc(48,43,2.4,0,7); q.fill();
+    });
+    /* 海星翻翻身 */
+    draw('icStar',q=>{
+      q.lineJoin='round'; q.lineCap='round';
+      q.fillStyle='#d8ecec';                                   /* 一汪小水 */
+      q.beginPath(); q.ellipse(43,62,27,11,0,0,7); q.fill();
+      const R=23,cx=43,cy=39;                                  /* 圆润小海星 */
+      q.beginPath();
+      for(let i=0;i<10;i++){
+        const a=-Math.PI/2+i*Math.PI/5, r=(i%2===0)?R:R*0.55;
+        const px=cx+Math.cos(a)*r, py=cy+Math.sin(a)*r;
+        i?q.lineTo(px,py):q.moveTo(px,py);
+      }
+      q.closePath();
+      q.fillStyle='#f2b3ae'; q.strokeStyle='#f2b3ae';
+      q.lineWidth=R*0.5; q.stroke(); q.fill();
+      q.fillStyle='#57514d';
+      q.beginPath(); q.arc(cx-6,cy-1,2.2,0,7); q.fill();
+      q.beginPath(); q.arc(cx+6,cy-1,2.2,0,7); q.fill();
+      q.strokeStyle='#57514d'; q.lineWidth=1.6;
+      q.beginPath(); q.arc(cx,cy+3,3.6,0.3,Math.PI-0.3); q.stroke();
+      q.fillStyle='rgba(226,147,143,.85)';
+      q.beginPath(); q.arc(cx-9,cy+3,2.6,0,7); q.fill();
+      q.beginPath(); q.arc(cx+9,cy+3,2.6,0,7); q.fill();
+    });
+    /* 乱跑小猪乐园 */
+    draw('icPig',q=>{
+      q.lineJoin='round'; q.lineCap='round';
+      q.fillStyle='#e8a89f';                                   /* 耳朵 */
+      q.beginPath(); q.ellipse(27,26,7,10,-0.4,0,7); q.fill();
+      q.beginPath(); q.ellipse(59,26,7,10,0.4,0,7); q.fill();
+      q.fillStyle='#f6c6c0';                                   /* 圆脑袋 */
+      q.beginPath(); q.arc(43,46,24,0,7); q.fill();
+      q.fillStyle='#57514d';                                   /* 眼睛 */
+      q.beginPath(); q.arc(34,41,2.6,0,7); q.fill();
+      q.beginPath(); q.arc(52,41,2.6,0,7); q.fill();
+      q.fillStyle='#e8a89f';                                   /* 大鼻子 */
+      q.beginPath(); q.ellipse(43,50,10.5,7.5,0,0,7); q.fill();
+      q.fillStyle='#c9867d';
+      q.beginPath(); q.arc(39,50,1.8,0,7); q.fill();
+      q.beginPath(); q.arc(47,50,1.8,0,7); q.fill();
+      q.fillStyle='rgba(242,172,160,.7)';                      /* 腮红 */
+      q.beginPath(); q.arc(26,48,3.6,0,7); q.fill();
+      q.beginPath(); q.arc(60,48,3.6,0,7); q.fill();
+    });
+    /* 大眼金鱼看电视 */
+    draw('icFish',q=>{
+      q.lineJoin='round'; q.lineCap='round';
+      q.fillStyle='#e8f5f3'; q.strokeStyle='#cfe0da'; q.lineWidth=3;  /* 小鱼缸 */
+      q.beginPath(); q.arc(43,46,27,0,7); q.fill(); q.stroke();
+      q.strokeStyle='rgba(255,255,255,.85)'; q.lineWidth=3.4;
+      q.beginPath(); q.arc(43,46,21,Math.PI*1.1,Math.PI*1.4); q.stroke();
+      q.fillStyle='#eda06a';                                   /* 尾巴与背鳍 */
+      q.beginPath(); q.moveTo(34,48); q.quadraticCurveTo(24,42,26,34);
+      q.quadraticCurveTo(31,40,36,41); q.closePath(); q.fill();
+      q.beginPath(); q.moveTo(40,42); q.quadraticCurveTo(45,34,51,40);
+      q.closePath(); q.fill();
+      q.fillStyle='#f6c291';                                   /* 身体 */
+      q.beginPath(); q.ellipse(44,48,13,9,0,0,7); q.fill();
+      /* 两只分开的大眼睛 */
+      q.fillStyle='#ffffff';
+      q.beginPath(); q.arc(51,45,5.2,0,7); q.fill();           /* 右眼 */
+      q.beginPath(); q.arc(41,43.5,4.6,0,7); q.fill();          /* 左眼 */
+      q.fillStyle='#57514d';
+      q.beginPath(); q.arc(52.4,45,2.6,0,7); q.fill();          /* 右瞳 */
+      q.beginPath(); q.arc(42.2,43.5,2.2,0,7); q.fill();        /* 左瞳 */
+      q.fillStyle='#fff';
+      q.beginPath(); q.arc(51.5,44,0.9,0,7); q.fill();          /* 高光 */
+      q.beginPath(); q.arc(41.4,42.6,0.8,0,7); q.fill();
+      q.strokeStyle='#57514d'; q.lineWidth=1.4;                /* 小嘴 */
+      q.beginPath(); q.arc(54,50,2.4,0.2,Math.PI-0.6); q.stroke();
+      q.strokeStyle='rgba(255,255,255,.8)'; q.lineWidth=1.6;   /* 小气泡 */
+      q.beginPath(); q.arc(31,32,2.4,0,7); q.stroke();
+      q.beginPath(); q.arc(35,25,1.5,0,7); q.stroke();
+    });
+  }
+  drawIcons();
+
+  /* ---------- ③ 页面切换 ---------- */
+  const GAMES={
+    bird:{ sec:document.getElementById('game-bird'), mod:null },   /* 小鸟页面零侵入 */
+    star:{ sec:document.getElementById('game-star'), mod:window.StarGame },
+    pig :{ sec:document.getElementById('game-pig'),  mod:window.PigGame },
+    fish:{ sec:document.getElementById('game-fish'), mod:window.FishGame },
+  };
+  let current=null;
+  function openGame(id){
+    const gm=GAMES[id];
+    if(!gm||current) return;
+    document.getElementById('menu').classList.remove('on');
+    gm.sec.classList.add('on');
+    current=id;
+    if(id==='bird'){ if(window.resize) window.resize(); }  /* 触发小鸟重算布局 */
+    else if(gm.mod) gm.mod.enter();
+  }
+  function backToMenu(){
+    if(!current) return;
+    const gm=GAMES[current];
+    gm.sec.classList.remove('on');
+    if(gm.mod) gm.mod.leave();
+    current=null;
+    document.getElementById('menu').classList.add('on');
+  }
+  document.querySelectorAll('.card').forEach(c=>
+    c.addEventListener('click',()=>{ TONE.pop(); openGame(c.dataset.game); }));
+  document.querySelectorAll('[data-back]').forEach(b=>
+    b.addEventListener('click',()=>{ TONE.pop(); backToMenu(); }));
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') backToMenu(); });
+
+  /* ---------- ④ 新游戏页的静音按钮（只控制合集音效，不影响小鸟） ---------- */
+  function syncMutes(){
+    document.querySelectorAll('.tone-mute').forEach(b=>{
+      b.querySelector('.ic-on').style.display =TONE.isMuted()?'none':'';
+      b.querySelector('.ic-off').style.display=TONE.isMuted()?'':'none';
+    });
+  }
+  document.querySelectorAll('.tone-mute').forEach(b=>
+    b.addEventListener('click',()=>{ TONE.setMuted(!TONE.isMuted()); syncMutes(); }));
+})();
+</script>
+</body>
+</html>
